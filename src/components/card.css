@@ -1,0 +1,169 @@
+/* ── 카드 기본 ── */
+.cv-card {
+  width: 100%;
+  height: 100%;
+  border-radius: inherit;
+  position: relative;
+  overflow: hidden;
+  font-family: 'Outfit', Arial, sans-serif;
+}
+
+/* ── 뒷면 ── */
+.cv-back {
+  background: linear-gradient(145deg, #1e3a8a, #1e40af, #1d4ed8);
+}
+
+.cv-back-pattern {
+  position: absolute;
+  inset: 5px;
+  border-radius: 7px;
+  border: 1.5px solid rgba(255, 255, 255, 0.25);
+  background:
+    repeating-linear-gradient(
+      45deg,
+      rgba(255, 255, 255, 0.06) 0px,
+      rgba(255, 255, 255, 0.06) 4px,
+      transparent 4px,
+      transparent 10px
+    );
+}
+
+.cv-back-inner {
+  position: absolute;
+  inset: 9px;
+  border-radius: 5px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+/* ── 앞면 ── */
+.cv-front {
+  background: #ffffff;
+}
+
+.cv-red {
+  background: linear-gradient(170deg, #ffffff, #fff9f4);
+  color: #c41e3a;
+}
+
+.cv-black {
+  background: linear-gradient(170deg, #ffffff, #f8f8f8);
+  color: #1a1a1a;
+}
+
+/* ── 코너 ── */
+.cv-corner {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  line-height: 1;
+  z-index: 2;
+}
+
+.cv-tl {
+  top: 5%;
+  left: 8%;
+}
+
+.cv-br {
+  bottom: 5%;
+  right: 8%;
+  transform: rotate(180deg);
+}
+
+.cv-rank {
+  font-size: clamp(9px, 2.8vw, 16px);
+  font-weight: 800;
+  line-height: 1;
+}
+
+.cv-suit {
+  font-size: clamp(7px, 2.2vw, 13px);
+  line-height: 1;
+  margin-top: 1px;
+}
+
+/* ── 중앙 ── */
+.cv-center {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ── 에이스 ── */
+.cv-ace-suit {
+  font-size: clamp(22px, 7vw, 36px);
+  line-height: 1;
+}
+
+/* ── 페이스 카드 (J/Q/K) ── */
+.cv-face {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+}
+
+.cv-face-top {
+  font-size: clamp(12px, 4vw, 22px);
+}
+
+.cv-face-letter {
+  font-size: clamp(14px, 5vw, 28px);
+  font-weight: 900;
+  line-height: 1;
+}
+
+.cv-face-suit {
+  font-size: clamp(10px, 3.5vw, 18px);
+  opacity: 0.8;
+}
+
+/* ── 핍 레이아웃 ── */
+.pip-field {
+  position: absolute;
+  /* 코너 영역 제외한 중앙 공간 */
+  top: 22%;
+  bottom: 22%;
+  left: 10%;
+  right: 10%;
+}
+
+.pip {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  font-size: clamp(7px, 2.5vw, 14px);
+  line-height: 1;
+  user-select: none;
+}
+
+.pip-text {
+  font-size: clamp(8px, 2.5vw, 13px);
+  font-weight: 700;
+  opacity: 0.7;
+}
+
+/* ── 선택 효과 (카드 내부에서 처리 안 함 — App.css의 .card.selected에서 처리) ── */
+
+/* ── 미니 (드래그 고스트용) ── */
+.cv-mini {
+  /* 고스트는 App.tsx에서 width 지정 */
+}
+
+/* ── 모바일: 더 작은 폰트 ── */
+@media (max-width: 600px) {
+  .cv-rank {
+    font-size: clamp(7px, 2.2vw, 12px);
+  }
+  .cv-suit {
+    font-size: clamp(6px, 1.8vw, 10px);
+  }
+  .cv-ace-suit {
+    font-size: clamp(16px, 5.5vw, 26px);
+  }
+  .cv-face-letter {
+    font-size: clamp(12px, 4vw, 20px);
+  }
+}

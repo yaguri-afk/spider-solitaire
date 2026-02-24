@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
+import CardView from "./components/CardView";
 import "./App.css";
 import {
   canPickStack,
@@ -10,29 +11,62 @@ import {
   undo,
 } from "./game/game";
 import type { GameState } from "./game/types";
+import type { Difficulty } from "./game/types";
 
 function App() {
+  const [difficulty, setDifficulty] = useState<Difficulty>(2);
   const [state, setState] = useState<GameState>(() => newGame(2));
+  const [moves, setMoves] = useState(0);
+  const [showDiffModal, setShowDiffModal] = useState(false);
 
-  // 선택된 카드(또는 스택)의 시작 위치
+  // 선택된 카드 스택
   const [pick, setPick] = useState<{ fromCol: number; fromIndex: number } | null>(null);
 
   // 드래그 상태
   const [dragging, setDragging] = useState(false);
+  const [ghostPos, setGhostPos] = useState<{ x: number; y: number } | null>(null);
   const dragPosRef = useRef<{ x: number; y: number } | null>(null);
 
-  // 유령 카드 위치(화면에 그리기용)
-  const [ghostPos, setGhostPos] = useState<{ x: number; y: number } | null>(null);
+  // 드래그 후 click 이벤트 무시용 (타임스탬프 방식 — 선언 누락 버그 수정)
+  const ignoreClickUntilRef = useRef<number>(0);
 
-  // 각 column DOM 저장 (가장 가까운 열 계산용)
+  // 각 column DOM 참조
   const colRefs = useRef<(HTMLDivElement | null)[]>([]);
 
-  const onNewGame = () => {
-    setState(newGame(2));
+  // 카드 열 높이 계산: 열에 카드가 많을수록 간격을 좁힘
+  const getCardOffset = useCallback((colLength: number, cardIndex: number, colHeight: number): number => {
+    if (colLength <= 1) return 0;
+    // 카드 하나 높이는 col 높이의 약 55% (aspect-ratio 5:7)
+    const cardH = colHeight * 0.55;
+    const available = colHeight - cardH - 16; // 패딩 제외
+    const maxOffset = available / (colLength - 1);
+    // 최소 14px(뒤집힌 카드 구분), 최대 32px(앞면 카드 읽기 가능)
+    const minOffset = cardIndex < colLength - 1 && !true ? 14 : 14;
+    const offset = Math.min(maxOffset, 32);
+    return Math.max(minOffset, offset) * cardIndex;
+  }, []);
+
+  const colHeightRef = useRef<number>(600);
+  useEffect(() => {
+    const updateHeight = () => {
+      const el = colRefs.current.find(Boolean);
+      if (el) colHeightRef.current = el.getBoundingClientRect().height;
+    };
+    updateHeight();
+    window.addEventListener("resize", updateHeight);
+    return () => window.removeEventListener("resize", updateHeight);
+  }, []);
+
+  const startNewGame = (diff: Difficulty) => {
+    setDifficulty(diff);
+    setState(newGame(diff));
+    setMoves(0);
     setPick(null);
     setDragging(false);
     dragPosRef.current = null;
     setGhostPos(null);
+    setShowDiffModal(false);
+    ignoreClickUntilRef.current = Date.now() + 400;
   };
 
   const onDeal = () => {
@@ -52,218 +86,299 @@ function App() {
   };
 
   const canDeal = state.stock.length >= 10 && state.status === "playing";
-  const canUndo =
-    state.history.length > 0 && state.undoUsed < 3 && state.status === "playing";
+  const canUndoAction = state.history.length > 0 && state.undoUsed < 3 && state.status === "playing";
 
   function findClosestColumnIndex(x: number): number | null {
     let bestIdx: number | null = null;
     let bestDist = Infinity;
-
     for (let i = 0; i < colRefs.current.length; i++) {
       const el = colRefs.current[i];
       if (!el) continue;
-
       const rect = el.getBoundingClientRect();
       const centerX = rect.left + rect.width / 2;
       const dist = Math.abs(x - centerX);
-
       if (dist < bestDist) {
         bestDist = dist;
         bestIdx = i;
       }
     }
-
     return bestIdx;
   }
 
-// 전역 드래그 추적: 어디로 마우스를 옮겨도 추적 가능
-useEffect(() => {
-  function onMove(e: PointerEvent) {
-    if (!dragging) return;
-    dragPosRef.current = { x: e.clientX, y: e.clientY };
-    setGhostPos({ x: e.clientX, y: e.clientY });
-  }
+  // 전역 포인터 이벤트
+  useEffect(() => {
+    function onMove(e: PointerEvent) {
+      if (!dragging) return;
+      dragPosRef.current = { x: e.clientX, y: e.clientY };
+      setGhostPos({ x: e.clientX, y: e.clientY });
+    }
 
-  function onUp(e: PointerEvent) {
-    if (!dragging) return;
+    function onUp(e: PointerEvent) {
+      if (!dragging) return;
 
-    setDragging(false);
-    dragPosRef.current = null;
-    setGhostPos(null);
+      setDragging(false);
+      dragPosRef.current = null;
+      setGhostPos(null);
 
-    // pick을 읽고 이동 시도 후 선택 해제
-    setPick((p) => {
-      if (!p) return null;
+      // 드래그 직후 발생하는 click 무시
+      ignoreClickUntilRef.current = Date.now() + 300;
 
-      const targetIdx = findClosestColumnIndex(e.clientX);
-      if (targetIdx !== null) {
-        setState((s) => moveStack(s, p, targetIdx));
+      if (!pick) {
+        setPick(null);
+        return;
       }
-      return null;
-    });
-  }
 
-  function onCancel() {
-    if (!dragging) return;
-    setDragging(false);
-    dragPosRef.current = null;
-    setGhostPos(null);
-    setPick(null);
-  }
+      const p = pick;
+      const targetIdx = findClosestColumnIndex(e.clientX);
 
-  const opts = { capture: true } as const;
+      if (targetIdx !== null) {
+        setState((s) => {
+          const next = moveStack(s, p, targetIdx);
+          if (next !== s) setMoves((m) => m + 1);
+          return next;
+        });
+      }
 
-window.addEventListener("pointermove", onMove, opts);
-window.addEventListener("pointerup", onUp, opts);
-window.addEventListener("pointercancel", onCancel, opts);
+      setPick(null);
+    }
 
-return () => {
-  window.removeEventListener("pointermove", onMove, opts);
-  window.removeEventListener("pointerup", onUp, opts);
-  window.removeEventListener("pointercancel", onCancel, opts);
-};
-}, [dragging]);
+    function onCancel() {
+      if (!dragging) return;
+      setDragging(false);
+      dragPosRef.current = null;
+      setGhostPos(null);
+      setPick(null);
+    }
+
+    const opts = { capture: true } as const;
+    window.addEventListener("pointermove", onMove, opts);
+    window.addEventListener("pointerup", onUp, opts);
+    window.addEventListener("pointercancel", onCancel, opts);
+
+    return () => {
+      window.removeEventListener("pointermove", onMove, opts);
+      window.removeEventListener("pointerup", onUp, opts);
+      window.removeEventListener("pointercancel", onCancel, opts);
+    };
+  }, [dragging, pick]);
+
+  const diffLabel: Record<Difficulty, string> = { 1: "1 Suit", 2: "2 Suits", 4: "4 Suits" };
+  const diffDesc: Record<Difficulty, string> = { 1: "초급", 2: "중급", 4: "고급" };
+
+  // stock 덱 표시 (최대 5장 겹쳐 보이기)
+  const stockPiles = Math.ceil(state.stock.length / 10);
 
   return (
     <div className="game">
+      {/* ── 헤더 ── */}
       <header className="topbar">
-        <h1>🕷 Spider Solitaire</h1>
-
-        <div className="meta">
-          <span>Difficulty: 2 Suits (Default)</span>
-          <span>Undo used: {state.undoUsed}/3</span>
-          <span>Foundation: {state.foundation.length}</span>
-          <span>Stock: {state.stock.length}</span>
-          <span>Status: {state.status}</span>
+        <div className="topbar-left">
+          <h1>🕷 Spider</h1>
+          <span className="diff-badge">{diffLabel[difficulty]} · {diffDesc[difficulty]}</span>
         </div>
-
+        <div className="topbar-stats">
+          <div className="stat">
+            <span className="stat-label">이동</span>
+            <span className="stat-value">{moves}</span>
+          </div>
+          <div className="stat">
+            <span className="stat-label">완성</span>
+            <span className="stat-value">{state.foundation.length}/8</span>
+          </div>
+          <div className="stat">
+            <span className="stat-label">Undo</span>
+            <span className="stat-value">{state.undoUsed}/3</span>
+          </div>
+        </div>
         <div className="buttons">
-          <button className="btn" onClick={onNewGame}>
-            New Game
+          <button className="btn btn-primary" onClick={() => setShowDiffModal(true)}>
+            새 게임
           </button>
           <button className="btn" onClick={onDeal} disabled={!canDeal}>
-            Deal
+            카드 뽑기
+            {state.stock.length > 0 && (
+              <span className="btn-badge">{Math.floor(state.stock.length / 10)}</span>
+            )}
           </button>
-          <button className="btn" onClick={onUndo} disabled={!canUndo}>
-            Undo
+          <button className="btn" onClick={onUndo} disabled={!canUndoAction}>
+            되돌리기
+            {canUndoAction && <span className="btn-badge">{3 - state.undoUsed}</span>}
           </button>
         </div>
-
-        {state.status === "won" && (
-          <div className="win">🎉 You won! (All 8 runs completed)</div>
-        )}
       </header>
 
-      {/* 유령 카드(드래그 프리뷰) */}
+      {/* ── 승리 배너 ── */}
+      {state.status === "won" && (
+        <div className="win-banner">
+          <span className="win-icon">🎉</span>
+          <span>축하해요! 모든 조합을 완성했어요!</span>
+          <button className="btn btn-primary" onClick={() => setShowDiffModal(true)}>
+            다시 하기
+          </button>
+        </div>
+      )}
+
+      {/* ── 게임 보드 ── */}
+      <div className="board-wrapper">
+        {/* Foundation 영역 (완성된 덱) */}
+        <div className="foundation-area">
+          {Array.from({ length: 8 }).map((_, i) => (
+            <div key={i} className={`foundation-slot ${i < state.foundation.length ? "filled" : ""}`}>
+              {i < state.foundation.length ? "♠" : ""}
+            </div>
+          ))}
+        </div>
+
+        {/* Stock 덱 */}
+        <div className="stock-area" onClick={canDeal ? onDeal : undefined} title="클릭해서 카드 뽑기">
+          {state.stock.length > 0 ? (
+            <div className="stock-stack">
+              {Array.from({ length: Math.min(stockPiles, 5) }).map((_, i) => (
+                <div
+                  key={i}
+                  className="stock-card"
+                  style={{ transform: `translateY(${-i * 3}px) translateX(${i * 2}px)` }}
+                />
+              ))}
+              <span className="stock-count">{Math.floor(state.stock.length / 10)}</span>
+            </div>
+          ) : (
+            <div className="stock-empty">비었음</div>
+          )}
+        </div>
+
+        {/* 메인 보드 */}
+        <div className="board">
+          {state.columns.map((col, i) => {
+            const isDropTarget = dragging && pick && pick.fromCol !== i;
+            return (
+              <div
+                className={`column ${isDropTarget ? "droppable" : ""}`}
+                key={i}
+                ref={(el) => { colRefs.current[i] = el; }}
+                onClick={() => {
+                  if (Date.now() < ignoreClickUntilRef.current) return;
+                  if (!pick) return;
+                  setState((s) => {
+                    const next = moveStack(s, pick, i);
+                    if (next !== s) setMoves((m) => m + 1);
+                    return next;
+                  });
+                  setPick(null);
+                }}
+              >
+                {col.length === 0 && <div className="empty-col-hint">빈 열</div>}
+                {col.map((card, j) => {
+                  const isSelected = pick?.fromCol === i && pick?.fromIndex === j;
+                  const colH = colHeightRef.current;
+                  const topPx = (() => {
+                    if (col.length <= 1) return 8;
+                    const cardH = colH * 0.55;
+                    const available = colH - cardH - 16;
+                    const maxStep = available / (col.length - 1);
+                    const step = Math.min(maxStep, 30);
+                    const minStep = 14;
+                    return 8 + Math.max(minStep, step) * j;
+                  })();
+
+                  return (
+                    <div
+                      className={`card ${card.faceUp ? "up" : "down"} ${
+                        (card.suit === "H" || card.suit === "D") ? "redCard" : ""
+                      } ${isSelected ? "selected" : ""} ${
+                        dragging && pick?.fromCol === i && j >= pick.fromIndex ? "dragging" : ""
+                      }`}
+                      key={card.id}
+                      style={{ top: topPx }}
+                      onPointerDown={(e) => {
+                        e.stopPropagation();
+                        e.preventDefault();
+                        if (!card.faceUp) return;
+                        (e.currentTarget as HTMLDivElement).setPointerCapture(e.pointerId);
+                        if (canPickStack(state.columns, i, j)) {
+                          setPick({ fromCol: i, fromIndex: j });
+                          setDragging(true);
+                          dragPosRef.current = { x: e.clientX, y: e.clientY };
+                          setGhostPos({ x: e.clientX, y: e.clientY });
+                        }
+                      }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (Date.now() < ignoreClickUntilRef.current) return;
+                        if (!card.faceUp) return;
+                        if (isSelected) {
+                          setPick(null);
+                          return;
+                        }
+                        if (pick) {
+                          // 다른 카드 위로 클릭 → 이동 시도
+                          setState((s) => {
+                            const next = moveStack(s, pick, i);
+                            if (next !== s) setMoves((m) => m + 1);
+                            return next;
+                          });
+                          setPick(null);
+                        } else {
+                          if (canPickStack(state.columns, i, j)) {
+                            setPick({ fromCol: i, fromIndex: j });
+                          }
+                        }
+                      }}
+                      title={card.faceUp ? `${rankLabel(card.rank)}${suitLabel(card.suit)}` : ""}
+                    >
+                      <CardView card={card} selected={isSelected} />
+                    </div>
+                  );
+                })}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* ── 드래그 고스트 ── */}
       {dragging && pick && ghostPos && (
         <div
           className="ghost"
           style={{
-            left: ghostPos.x + 10,
-            top: ghostPos.y + 10,
+            left: ghostPos.x,
+            top: ghostPos.y,
+            transform: "translate(-50%, -60%)",
           }}
         >
-          {(() => {
-            const c = state.columns[pick.fromCol][pick.fromIndex];
-            const isRed = c.suit === "H" || c.suit === "D";
-            return (
-              <div className={`ghostCard ${isRed ? "red" : "black"}`}>
-                <div className="ghostCorner">
-                  <span className="rank">{rankLabel(c.rank)}</span>
-                  <span className="suit">{suitLabel(c.suit)}</span>
-                </div>
-                <div className="ghostCenter">{suitLabel(c.suit)}</div>
-              </div>
-            );
-          })()}
+          {state.columns[pick.fromCol].slice(pick.fromIndex).map((card, idx) => (
+            <div key={card.id} style={{ position: idx === 0 ? "relative" : "absolute", top: idx * 22 }}>
+              <CardView card={card} mini />
+            </div>
+          ))}
         </div>
       )}
 
-      <div className="board">
-        {state.columns.map((col, i) => (
-          <div
-            className="column"
-            key={i}
-            ref={(el) => {
-  colRefs.current[i] = el;
-}}
-            onClick={() => {
-              // 클릭 이동(기존 기능 유지)
-              if (!pick) return;
-              setState((s) => moveStack(s, pick, i));
-              setPick(null);
-            }}
-          >
-            {col.map((card, j) => {
-              const isSelected = pick?.fromCol === i && pick?.fromIndex === j;
-
-              return (
-                <div
-className={`card ${card.faceUp ? "up" : "down"} ${
-  card.suit === "H" || card.suit === "D" ? "redCard" : ""
-} ${isSelected ? "selected" : ""} ${
-  dragging && isSelected ? "dragging" : ""
-}`}
-                  key={card.id}
-                  style={{ top: j * 26 }}
-                  onPointerDown={(e) => {
-  e.stopPropagation();
-  e.preventDefault(); // ✅ iOS에서 중요
-  if (!card.faceUp) return;
-
-  // ✅ 포인터를 이 요소가 끝까지 잡고 있게
-  (e.currentTarget as HTMLDivElement).setPointerCapture(e.pointerId);
-
-  if (canPickStack(state.columns, i, j)) {
-    setPick({ fromCol: i, fromIndex: j });
-    setDragging(true);
-    dragPosRef.current = { x: e.clientX, y: e.clientY };
-    setGhostPos({ x: e.clientX, y: e.clientY });
-                    }
-                  }}
-                  onClick={(e) => {
-                    // 클릭 선택/해제(기존 기능 유지)
-                    e.stopPropagation();
-                    if (!card.faceUp) return;
-
-                    if (isSelected) {
-                      setPick(null);
-                      return;
-                    }
-
-                    if (canPickStack(state.columns, i, j)) {
-                      setPick({ fromCol: i, fromIndex: j });
-                    }
-                  }}
-                  title={`${suitLabel(card.suit)} ${rankLabel(card.rank)}`}
+      {/* ── 난이도 선택 모달 ── */}
+      {showDiffModal && (
+        <div className="modal-overlay" onClick={() => setShowDiffModal(false)}>
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
+            <h2>난이도 선택</h2>
+            <p>새 게임을 시작할 난이도를 선택하세요</p>
+            <div className="diff-options">
+              {([1, 2, 4] as Difficulty[]).map((d) => (
+                <button
+                  key={d}
+                  className={`diff-btn ${difficulty === d ? "active" : ""}`}
+                  onClick={() => startNewGame(d)}
                 >
-                  {card.faceUp ? (
-                    <div
-                      className={`face ${
-                        card.suit === "H" || card.suit === "D" ? "red" : "black"
-                      }`}
-                    >
-                      <div className="corner">
-                        <span className="rank">{rankLabel(card.rank)}</span>
-                        <span className="suit">{suitLabel(card.suit)}</span>
-                      </div>
-
-                      <div className="center">{suitLabel(card.suit)}</div>
-
-                      <div className="corner bottom">
-                        <span className="rank">{rankLabel(card.rank)}</span>
-                        <span className="suit">{suitLabel(card.suit)}</span>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="back" />
-                  )}
-                </div>
-              );
-            })}
+                  <span className="diff-suits">
+                    {d === 1 ? "♠" : d === 2 ? "♠♥" : "♠♥♦♣"}
+                  </span>
+                  <span className="diff-name">{diffLabel[d]}</span>
+                  <span className="diff-sub">{diffDesc[d]}</span>
+                </button>
+              ))}
+            </div>
+            <button className="btn" onClick={() => setShowDiffModal(false)}>취소</button>
           </div>
-        ))}
-      </div>
+        </div>
+      )}
     </div>
   );
 }

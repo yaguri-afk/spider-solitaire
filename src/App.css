@@ -1,306 +1,590 @@
-body {
-  margin: 0;
-  background-color: #0b3d2e;
-  color: white;
-  font-family: Arial, sans-serif;
-}
+/* ── 폰트 ── */
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;900&display=swap');
 
-.game {
-  min-height: 100vh;
-  padding: 16px;
+/* ── 기본 리셋 ── */
+*, *::before, *::after {
   box-sizing: border-box;
 }
 
-.topbar {
+body {
+  margin: 0;
+  background-color: #0e3b2a;
+  background-image:
+    radial-gradient(ellipse at 20% 0%, rgba(0, 100, 60, 0.45) 0%, transparent 60%),
+    radial-gradient(ellipse at 80% 100%, rgba(0, 60, 40, 0.5) 0%, transparent 60%);
+  min-height: 100vh;
+  color: white;
+  font-family: 'Outfit', Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+}
+
+/* ── 전체 레이아웃 ── */
+.game {
+  min-height: 100vh;
+  padding: 12px 14px 20px;
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  margin-bottom: 16px;
+  gap: 10px;
 }
 
-.topbar h1 {
-  margin: 0;
-  font-size: 28px;
-}
-
-.meta {
+/* ── 헤더 ── */
+.topbar {
   display: flex;
-  gap: 16px;
+  align-items: center;
+  gap: 12px;
   flex-wrap: wrap;
-  opacity: 0.9;
-  font-size: 14px;
+  background: rgba(0, 0, 0, 0.25);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+  padding: 10px 16px;
+}
+
+.topbar-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 0 0 auto;
+}
+
+.topbar-left h1 {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 900;
+  letter-spacing: -0.5px;
+  white-space: nowrap;
+}
+
+.diff-badge {
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 20px;
+  padding: 3px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.topbar-stats {
+  display: flex;
+  gap: 6px;
+  flex: 1;
+  justify-content: center;
+}
+
+.stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  padding: 4px 12px;
+  min-width: 52px;
+}
+
+.stat-label {
+  font-size: 10px;
+  opacity: 0.6;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.stat-value {
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+/* ── 버튼 ── */
+.buttons {
+  display: flex;
+  gap: 8px;
+  flex: 0 0 auto;
 }
 
 .btn {
-  width: 140px;
-  padding: 8px 10px;
-  border-radius: 8px;
-  border: 0;
+  position: relative;
+  padding: 8px 14px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
   cursor: pointer;
   font-weight: 700;
+  font-size: 13px;
+  font-family: inherit;
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+  transition: background 0.15s, transform 0.1s;
+  white-space: nowrap;
 }
 
+.btn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.2);
+  transform: translateY(-1px);
+}
+
+.btn:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, #22c55e, #16a34a);
+  border-color: transparent;
+  box-shadow: 0 2px 12px rgba(34, 197, 94, 0.35);
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: linear-gradient(135deg, #4ade80, #22c55e);
+}
+
+.btn-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.25);
+  border-radius: 10px;
+  min-width: 18px;
+  height: 18px;
+  font-size: 11px;
+  padding: 0 4px;
+  margin-left: 5px;
+}
+
+/* ── 승리 배너 ── */
+.win-banner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  background: linear-gradient(135deg, rgba(34, 197, 94, 0.3), rgba(16, 163, 74, 0.2));
+  border: 1px solid rgba(34, 197, 94, 0.5);
+  border-radius: 14px;
+  padding: 14px 20px;
+  font-size: 16px;
+  font-weight: 700;
+  animation: popIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.win-icon {
+  font-size: 24px;
+}
+
+@keyframes popIn {
+  from { transform: scale(0.8); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+/* ── 보드 wrapper ── */
+.board-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex: 1;
+}
+
+/* Foundation + Stock 상단 영역 */
+.foundation-area {
+  display: flex;
+  gap: 5px;
+}
+
+.foundation-slot {
+  flex: 1;
+  aspect-ratio: 5 / 2;
+  max-width: 48px;
+  border-radius: 8px;
+  border: 1.5px dashed rgba(255, 255, 255, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  opacity: 0.5;
+  transition: opacity 0.2s;
+}
+
+.foundation-slot.filled {
+  background: rgba(34, 197, 94, 0.25);
+  border-color: rgba(34, 197, 94, 0.5);
+  opacity: 1;
+  color: #4ade80;
+}
+
+.stock-area {
+  cursor: pointer;
+  user-select: none;
+}
+
+.stock-stack {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.stock-card {
+  width: 44px;
+  height: 30px;
+  border-radius: 6px;
+  background: linear-gradient(135deg, #1e40af, #1e3a8a);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+
+.stock-count {
+  position: relative;
+  z-index: 10;
+  background: rgba(0,0,0,0.5);
+  border-radius: 6px;
+  padding: 3px 8px;
+  font-size: 12px;
+  font-weight: 700;
+  margin-left: 48px;
+}
+
+.stock-empty {
+  font-size: 11px;
+  opacity: 0.4;
+  padding: 4px;
+}
+
+/* ── 메인 보드 ── */
 .board {
   display: grid;
   grid-template-columns: repeat(10, minmax(0, 1fr));
-  gap: 6px;
-  padding-bottom: 12px;
+  gap: 5px;
+  flex: 1;
+  touch-action: pan-x;
 }
 
 .column {
   position: relative;
-  height: 800px;
   border-radius: 10px;
-  background: rgba(255, 255, 255, 0.08);
+  background: rgba(0, 0, 0, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  /* 동적 높이: 뷰포트 기반 */
+  height: clamp(380px, 72vh, 780px);
   padding: 8px;
-  box-sizing: border-box;
   overflow: hidden;
+  transition: outline 0.1s, box-shadow 0.1s;
 }
 
+.column.droppable {
+  outline: 2px solid rgba(255, 255, 255, 0.2);
+}
+
+.column.droppable:hover {
+  outline: 2px solid rgba(255, 230, 0, 0.8);
+  box-shadow: 0 0 0 3px rgba(255, 230, 0, 0.12);
+}
+
+.empty-col-hint {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  opacity: 0.2;
+  pointer-events: none;
+}
+
+/* ── 카드 공통 ── */
 .card {
   position: absolute;
   left: 0;
   width: 100%;
   aspect-ratio: 5 / 7;
-  border-radius: 12px;
+  border-radius: 10px;
   box-sizing: border-box;
   user-select: none;
-  overflow: hidden;
-
-  /* 카드 느낌 */
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.25);
-  transition: transform 80ms ease;
+  touch-action: none;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  transition: transform 80ms ease, box-shadow 80ms ease;
+  cursor: pointer;
 }
 
 .card:hover {
-  transform: translateY(-1px);
+  z-index: 100;
 }
 
-/* 앞면 카드 기본(검은 무늬 포함): 흰색 종이 */
+/* 앞면 */
 .card.up {
-  background: linear-gradient(180deg, rgba(255,255,255,0.98), rgba(245,245,245,0.98));
-  border: 1px solid rgba(0,0,0,0.12);
+  background: linear-gradient(175deg, #ffffff, #f5f5f5);
+  border: 1px solid rgba(0, 0, 0, 0.1);
   color: #111;
-}
-
-.card.down {
-  background: rgba(0, 0, 0, 0.35);
-  border: 2px solid rgba(255,255,255,0.22);
-  box-shadow: inset 0 0 0 2px rgba(0,0,0,0.25), 0 6px 14px rgba(0,0,0,0.35);
-}
-
-.buttons {
-  display: flex;
-  gap: 10px;
-  flex-wrap: wrap;
-}
-
-.btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.win {
-  margin-top: 8px;
-  font-weight: 800;
-}
-
-.card.selected {
-  outline: 3px solid rgba(255, 230, 0, 0.95);
-  box-shadow: 0 0 0 3px rgba(255, 230, 0, 0.25), 0 8px 16px rgba(0,0,0,0.35);
-}
-
-/* 카드 앞면 레이아웃 */
-.face {
-  position: relative;
-  width: 100%;
-  height: 100%;
-}
-
-.face.red {
-  /* 더 '빨강' 느낌 + 대비 확보 */
-  color: #c1121f;
-  font-weight: 950;
-}
-
-.face.black {
-  color: #111;
-}
-
-.corner {
-  position: absolute;
-  top: 6px;
-  left: 8px;
-  display: flex;
-  flex-direction: row;   /* 세로 → 가로 */
-  align-items: baseline;
-  gap: 6px;              /* 숫자와 무늬 사이 간격 */
-  line-height: 1;
-  background: rgba(255,255,255,0.65); /* 겹쳐져도 읽히게 작은 배경 */
-  padding: 2px 6px;
-  border-radius: 8px;
-}
-
-.corner .rank {
-  font-size: 15px;
-  font-weight: 950;
-}
-
-.corner .suit {
-  font-size: 15px;
-  font-weight: 950;
-}
-
-.corner .suit {
-  font-size: 15px;
-  margin-top: 2px;
-  text-shadow: 0 1px 0 rgba(255,255,255,0.35);
-}
-
-.corner.bottom {
-  top: auto;
-  left: auto;
-  right: 8px;
-  bottom: 6px;
-  transform: rotate(180deg);
-}
-
-/* 중앙 무늬 */
-.center {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 26px;
-  opacity: 0.9;
-}
-
-/* 카드 뒷면 패턴 */
-.back {
-  width: 100%;
-  height: 100%;
-  border-radius: 12px;
-
-  /* 뒤집힌 카드: 대비 강한 패턴 + 중앙 엠블럼 느낌 */
-  background:
-    radial-gradient(circle at 50% 50%, rgba(255,255,255,0.18), transparent 38%),
-    repeating-linear-gradient(
-      45deg,
-      rgba(255,255,255,0.16) 0px,
-      rgba(255,255,255,0.16) 6px,
-      rgba(0,0,0,0.10) 6px,
-      rgba(0,0,0,0.10) 12px
-    ),
-    linear-gradient(135deg, rgba(0,0,0,0.30), rgba(255,255,255,0.06));
-
-  outline: 2px solid rgba(255,255,255,0.22);
-  box-shadow: inset 0 0 0 2px rgba(0,0,0,0.25);
-}
-
-/* 색 말고도 '윤곽/형태'로 구분되게 */
-.face.red .center {
-  -webkit-text-stroke: 1px rgba(0, 0, 0, 0.35);
-  text-stroke: 1px rgba(0, 0, 0, 0.35);
-}
-
-.face.black .center {
-  -webkit-text-stroke: 1px rgba(255, 255, 255, 0.20);
-  text-stroke: 1px rgba(255, 255, 255, 0.20);
-}
-
-/* 선택: 빨강 카드만 아주 은은한 패턴(색이 아니라 질감으로 구분) */
-.face.red::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background: repeating-linear-gradient(
-    135deg,
-    rgba(0,0,0,0.04) 0px,
-    rgba(0,0,0,0.04) 6px,
-    transparent 6px,
-    transparent 12px
-  );
-  pointer-events: none;
-  opacity: 0.35;
-}
-/* 드래그할 때 마우스를 따라다니는 유령 카드 */
-.ghost {
-  position: fixed;
-  z-index: 9999;
-  pointer-events: none; /* 마우스 클릭 방해 금지 */
-}
-
-.ghostCard {
-  width: 90px;
-  height: 60px;
-  border-radius: 12px;
-  background: linear-gradient(180deg, rgba(255,255,255,0.98), rgba(245,245,245,0.98));
-  border: 1px solid rgba(0,0,0,0.12);
-  box-shadow: 0 10px 20px rgba(0,0,0,0.35);
-  opacity: 0.9;
-  position: relative;
-  overflow: hidden;
-}
-
-.ghostCard.red {
-  color: #c1121f;
-}
-
-.ghostCard.black {
-  color: #111;
-}
-
-.ghostCorner {
-  position: absolute;
-  top: 6px;
-  left: 8px;
-  display: flex;
-  gap: 6px;
-  font-weight: 950;
-}
-
-.ghostCenter {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 22px;
-  opacity: 0.5;
-}
-
-/* 드래그 중 드롭 가능한 열 */
-.column.droppable {
-  outline: 2px solid rgba(255, 255, 255, 0.35);
-}
-
-/* 현재 가장 가까운 열(드롭될 열) */
-.column.droppable.hover {
-  outline: 3px solid rgba(255, 230, 0, 0.85);
-  box-shadow: 0 0 0 3px rgba(255, 230, 0, 0.18);
-}
-
-/* iOS에서 드래그 중 스크롤/줌에 뺏기지 않도록 */
-.card {
-  touch-action: none;
-}
-
-.board {
-  /* 가로 스크롤은 살리고(필요하면), 세로는 터치 드래그에 덜 방해되게 */
-  touch-action: pan-x;
-}
-
-/* 드래그 중인 원본 카드: 살짝 흐리게 + 들어올린 느낌 */
-.card.dragging {
-  opacity: 0.35;
-  transform: translateY(-2px);
 }
 
 .card.up.redCard {
-  background: linear-gradient(
-    180deg,
-    rgba(255, 248, 220, 0.98),
-    rgba(245, 225, 170, 0.98)
-  );
+  background: linear-gradient(175deg, #fff8f0, #fef2e4);
+}
+
+/* 뒷면 */
+.card.down {
+  background: linear-gradient(135deg, #1e3a8a, #1e40af);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+/* 선택됨 */
+.card.selected {
+  outline: 2.5px solid rgba(250, 220, 0, 0.95);
+  box-shadow: 0 0 0 3px rgba(250, 220, 0, 0.2), 0 6px 16px rgba(0, 0, 0, 0.4);
+  z-index: 200;
+}
+
+/* 드래그 중 원본 */
+.card.dragging {
+  opacity: 0.3;
+}
+
+/* ── 드래그 고스트 ── */
+.ghost {
+  position: fixed;
+  z-index: 9999;
+  pointer-events: none;
+}
+
+/* ── 난이도 모달 ── */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(6px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+  animation: fadeIn 0.15s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.modal {
+  background: linear-gradient(145deg, #1a4a35, #0f2d1f);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 20px;
+  padding: 28px 24px;
+  max-width: 340px;
+  width: 90%;
+  text-align: center;
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.5);
+  animation: slideUp 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes slideUp {
+  from { transform: translateY(30px) scale(0.95); opacity: 0; }
+  to { transform: translateY(0) scale(1); opacity: 1; }
+}
+
+.modal h2 {
+  margin: 0 0 6px;
+  font-size: 22px;
+  font-weight: 900;
+}
+
+.modal p {
+  margin: 0 0 20px;
+  opacity: 0.65;
+  font-size: 14px;
+}
+
+.diff-options {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.diff-btn {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 18px;
+  border-radius: 12px;
+  border: 1.5px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.07);
+  color: white;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 0.15s, border-color 0.15s, transform 0.1s;
+  text-align: left;
+}
+
+.diff-btn:hover {
+  background: rgba(255, 255, 255, 0.14);
+  transform: translateX(3px);
+}
+
+.diff-btn.active {
+  border-color: rgba(34, 197, 94, 0.6);
+  background: rgba(34, 197, 94, 0.15);
+}
+
+.diff-suits {
+  font-size: 20px;
+  min-width: 50px;
+  letter-spacing: 2px;
+}
+
+.diff-name {
+  font-weight: 700;
+  font-size: 15px;
+  flex: 1;
+}
+
+.diff-sub {
+  font-size: 12px;
+  opacity: 0.5;
+}
+
+/* ══════════════════════════════
+   반응형 — 태블릿 (아이패드)
+══════════════════════════════ */
+@media (max-width: 900px) {
+  .game {
+    padding: 10px;
+    gap: 8px;
+  }
+
+  .topbar {
+    padding: 8px 12px;
+    border-radius: 12px;
+  }
+
+  .topbar-left h1 {
+    font-size: 18px;
+  }
+
+  .stat {
+    padding: 3px 8px;
+    min-width: 44px;
+  }
+
+  .stat-value {
+    font-size: 14px;
+  }
+
+  .btn {
+    padding: 7px 10px;
+    font-size: 12px;
+  }
+
+  .board {
+    gap: 4px;
+  }
+
+  .column {
+    height: clamp(320px, 68vh, 650px);
+    border-radius: 8px;
+    padding: 6px;
+  }
+}
+
+/* ══════════════════════════════
+   반응형 — 모바일 (아이폰)
+══════════════════════════════ */
+@media (max-width: 600px) {
+  .game {
+    padding: 8px 6px 16px;
+    gap: 6px;
+  }
+
+  .topbar {
+    flex-wrap: nowrap;
+    padding: 7px 10px;
+    gap: 8px;
+    border-radius: 10px;
+  }
+
+  .topbar-left h1 {
+    font-size: 16px;
+  }
+
+  .diff-badge {
+    display: none; /* 공간 부족 시 숨김 */
+  }
+
+  .topbar-stats {
+    gap: 4px;
+  }
+
+  .stat {
+    padding: 2px 6px;
+    min-width: 38px;
+  }
+
+  .stat-label {
+    font-size: 9px;
+  }
+
+  .stat-value {
+    font-size: 13px;
+  }
+
+  .buttons {
+    gap: 5px;
+  }
+
+  .btn {
+    padding: 6px 8px;
+    font-size: 11px;
+    border-radius: 8px;
+  }
+
+  .btn-badge {
+    display: none; /* 모바일 공간 절약 */
+  }
+
+  .board {
+    gap: 3px;
+  }
+
+  .column {
+    height: clamp(280px, 65vw, 450px);
+    border-radius: 7px;
+    padding: 4px;
+  }
+
+  .card {
+    border-radius: 7px;
+  }
+
+  .foundation-area {
+    gap: 3px;
+  }
+
+  /* 승리 배너 */
+  .win-banner {
+    flex-direction: column;
+    text-align: center;
+    gap: 8px;
+    padding: 12px;
+    font-size: 14px;
+  }
+}
+
+/* ══════════════════════════════
+   가로 모드 (아이폰 landscape)
+══════════════════════════════ */
+@media (max-width: 900px) and (orientation: landscape) {
+  .column {
+    height: clamp(220px, 55vh, 400px);
+  }
+
+  .topbar {
+    padding: 6px 10px;
+  }
+
+  .topbar-left h1 {
+    font-size: 15px;
+  }
 }
