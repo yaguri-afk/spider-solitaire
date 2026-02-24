@@ -41,7 +41,8 @@
 }
 
 .cv-red {
-  background: linear-gradient(170deg, #ffffff, #fff9f4);
+  /* 적록 색약 배려: 아이보리/크림 배경으로 흰 카드와 확실히 구별 */
+  background: linear-gradient(170deg, #fffbea, #fef3c7);
   color: #c41e3a;
 }
 
