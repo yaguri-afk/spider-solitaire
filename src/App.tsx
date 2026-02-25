@@ -121,7 +121,7 @@ function App() {
 
   // 고스트: 위치 + 드래그 중인 카드 스냅샷 (렌더링용 state)
   const [ghostPos, setGhostPos] = useState<{ x: number; y: number } | null>(null);
-  const [ghostCards, setGhostCards] = useState<Array<{ id: string; suit: string; rank: number; faceUp: boolean }>>([]);
+  const [ghostCards, setGhostCards] = useState<Card[]>([]);
 
   // 포인터 추적 — 전부 ref (동기)
   const pointerDownRef = useRef<{
