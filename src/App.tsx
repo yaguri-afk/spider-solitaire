@@ -2,20 +2,13 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import CardView from "./components/CardView";
 import "./App.css";
 import {
-  canPickStack,
-  dealFromStock,
-  moveStack,
-  newGame,
-  rankLabel,
-  suitLabel,
-  undo,
+  canPickStack, dealFromStock, moveStack, newGame, rankLabel, suitLabel, undo,
 } from "./game/game";
-import { canAutoComplete, buildAutoCompleteSequence } from "./game/autoComplete";
+import { buildAutoCompleteSequence, hasAnyMove, getStateSignature } from "./game/autoComplete";
 import type { GameState, Card, Difficulty } from "./game/types";
 
 const DRAG_THRESHOLD = 6;
 
-// ── AudioContext 싱글턴 ──
 let _audioCtx: AudioContext | null = null;
 async function getAudioCtx(): Promise<AudioContext | null> {
   try {
@@ -27,60 +20,76 @@ async function getAudioCtx(): Promise<AudioContext | null> {
 async function playCardMove() {
   const ctx = await getAudioCtx(); if (!ctx) return;
   try {
-    const bufferSize = Math.floor(ctx.sampleRate * 0.07);
-    const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
-    const data = buffer.getChannelData(0);
-    for (let i = 0; i < bufferSize; i++)
-      data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / bufferSize, 2.5);
-    const source = ctx.createBufferSource(); source.buffer = buffer;
-    const filter = ctx.createBiquadFilter(); filter.type = "bandpass"; filter.frequency.value = 800; filter.Q.value = 1.2;
-    const gain = ctx.createGain();
-    gain.gain.setValueAtTime(0.6, ctx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.07);
-    source.connect(filter); filter.connect(gain); gain.connect(ctx.destination); source.start();
+    const sz = Math.floor(ctx.sampleRate * 0.07);
+    const buf = ctx.createBuffer(1, sz, ctx.sampleRate);
+    const d = buf.getChannelData(0);
+    for (let i = 0; i < sz; i++) d[i] = (Math.random()*2-1) * Math.pow(1-i/sz, 2.5);
+    const src = ctx.createBufferSource(); src.buffer = buf;
+    const f = ctx.createBiquadFilter(); f.type = "bandpass"; f.frequency.value = 800; f.Q.value = 1.2;
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0.6, ctx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.07);
+    src.connect(f); f.connect(g); g.connect(ctx.destination); src.start();
   } catch (_) {}
 }
 async function playStackClear() {
   const ctx = await getAudioCtx(); if (!ctx) return;
   try {
-    const osc = ctx.createOscillator(); const gain = ctx.createGain();
-    osc.connect(gain); gain.connect(ctx.destination);
-    osc.type = "sine";
-    osc.frequency.setValueAtTime(280, ctx.currentTime);
-    osc.frequency.exponentialRampToValueAtTime(1500, ctx.currentTime + 0.4);
-    gain.gain.setValueAtTime(0, ctx.currentTime);
-    gain.gain.linearRampToValueAtTime(0.32, ctx.currentTime + 0.03);
-    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.42);
-    osc.start(ctx.currentTime); osc.stop(ctx.currentTime + 0.45);
+    const o = ctx.createOscillator(); const g = ctx.createGain();
+    o.connect(g); g.connect(ctx.destination); o.type = "sine";
+    o.frequency.setValueAtTime(280, ctx.currentTime);
+    o.frequency.exponentialRampToValueAtTime(1500, ctx.currentTime + 0.4);
+    g.gain.setValueAtTime(0, ctx.currentTime);
+    g.gain.linearRampToValueAtTime(0.32, ctx.currentTime + 0.03);
+    g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.42);
+    o.start(ctx.currentTime); o.stop(ctx.currentTime + 0.45);
   } catch (_) {}
 }
 async function playWinSound() {
   const ctx = await getAudioCtx(); if (!ctx) return;
   try {
-    [523, 659, 784, 1047].forEach((freq, i) => {
-      const osc = ctx.createOscillator(); const gain = ctx.createGain();
-      osc.connect(gain); gain.connect(ctx.destination);
-      osc.frequency.value = freq; osc.type = "sine";
-      const t = ctx.currentTime + i * 0.18;
-      gain.gain.setValueAtTime(0, t);
-      gain.gain.linearRampToValueAtTime(0.35, t + 0.05);
-      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.5);
-      osc.start(t); osc.stop(t + 0.5);
+    [523,659,784,1047].forEach((freq,i) => {
+      const o = ctx.createOscillator(); const g = ctx.createGain();
+      o.connect(g); g.connect(ctx.destination);
+      o.frequency.value = freq; o.type = "sine";
+      const t = ctx.currentTime + i*0.18;
+      g.gain.setValueAtTime(0,t); g.gain.linearRampToValueAtTime(0.35,t+0.05);
+      g.gain.exponentialRampToValueAtTime(0.001,t+0.5);
+      o.start(t); o.stop(t+0.5);
+    });
+  } catch (_) {}
+}
+async function playLoseSound() {
+  const ctx = await getAudioCtx(); if (!ctx) return;
+  try {
+    [400,350,300,250].forEach((freq,i) => {
+      const o = ctx.createOscillator(); const g = ctx.createGain();
+      o.connect(g); g.connect(ctx.destination);
+      o.frequency.value = freq; o.type = "sine";
+      const t = ctx.currentTime + i*0.22;
+      g.gain.setValueAtTime(0,t); g.gain.linearRampToValueAtTime(0.25,t+0.05);
+      g.gain.exponentialRampToValueAtTime(0.001,t+0.5);
+      o.start(t); o.stop(t+0.5);
     });
   } catch (_) {}
 }
 
-// 토토로 대사 목록
-const TOTORO_LINES = [
-  "다 됐어! 내가 도와줄게~ 🌿",
-  "후후, 이건 식은 죽 먹기야! 🍃",
-  "걱정 마, 토토로한테 맡겨! 🌳",
-  "자동완성 발동! 어라라~ ✨",
-  "조금만 기다려, 금방 끝내줄게! 🐾",
+const AUTO_LINES = [
+  "후루베 유라유라… 별수 없으니 내가 마무리해준다.",
+  "후루베 유라유라… 네가 못 하니까 어쩔 수 없잖아.",
+  "후루베 유라유라… 감사하단 말은 필요없어.",
+  "후루베 유라유라… 시간 낭비하지 말고 끝내자.",
+  "후루베 유라유라… 딱 이번 한 번만이야.",
+];
+const LOSE_LINES = [
+  "졌군. 뭐 그럴 줄 알았어.",
+  "이게 한계냐. 딱히 놀랍지도 않아.",
+  "더 이상 수가 없어. 포기해.",
+  "막혔군. 뭐, 나라도 어쩔 수 없었을 거야.",
+  "끝났어. 다음엔 좀 잘해봐.",
 ];
 
-// ── 전적 타입 & localStorage 유틸 ──
-type Record_ = { plays: number; wins: number; currentStreak: number; bestStreak: number; };
+type Record_ = { plays: number; wins: number; currentStreak: number; bestStreak: number };
 const RECORD_KEY = "spider_record";
 function loadRecord(): Record_ {
   try { const r = localStorage.getItem(RECORD_KEY); if (r) return JSON.parse(r); } catch (_) {}
@@ -93,23 +102,32 @@ function App() {
   const [state, setState] = useState<GameState>(() => newGame(2));
   const [showDiffModal, setShowDiffModal] = useState(false);
   const [showWin, setShowWin] = useState(false);
+  const [showLose, setShowLose] = useState(false);
   const [showRecord, setShowRecord] = useState(false);
   const [record, setRecord] = useState<Record_>(() => loadRecord());
   const [isBestStreak, setIsBestStreak] = useState(false);
   const hasMovedRef = useRef(false);
 
-  // 자동완성 상태
+  // 자동완성
+  const autoRunningRef = useRef(false);  // 단일 진실 소스 — state 아닌 ref로만 관리
   const [autoRunning, setAutoRunning] = useState(false);
-  const [showTotoro, setShowTotoro] = useState(false);
-  const [totoroLine, setTotoroLine] = useState("");
-  const [totoroVisible, setTotoroVisible] = useState(false);
-  const autoTimersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
+  const [animCardIds, setAnimCardIds] = useState<Set<string>>(new Set());
+
+  // 캐릭터 이펙트
+  const [charVisible, setCharVisible] = useState(false);
+  const [charLine, setCharLine] = useState("");
+  const [charImg, setCharImg] = useState("");
+  const [charBubbleVisible, setCharBubbleVisible] = useState(false);
+
+  const timersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
+  const loseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const recentSigsRef = useRef<string[]>([]);
 
   const [pick, setPick] = useState<{ fromCol: number; fromIndex: number } | null>(null);
   const [ghostPos, setGhostPos] = useState<{ x: number; y: number } | null>(null);
   const [ghostCards, setGhostCards] = useState<Card[]>([]);
 
-  const pointerDownRef = useRef<{ x: number; y: number; colIdx: number; cardIdx: number; pointerId: number; } | null>(null);
+  const pointerDownRef = useRef<{ x: number; y: number; colIdx: number; cardIdx: number; pointerId: number } | null>(null);
   const isDraggingRef = useRef(false);
   const pickRef = useRef<{ fromCol: number; fromIndex: number } | null>(null);
   const colRefs = useRef<(HTMLDivElement | null)[]>([]);
@@ -123,9 +141,9 @@ function App() {
     const measure = () => {
       const el = colRefs.current.find(Boolean);
       if (!el) return;
-      const rect = el.getBoundingClientRect();
-      setColHeight(rect.height);
-      setColWidth(Math.max(rect.width - 16, 40));
+      const r = el.getBoundingClientRect();
+      setColHeight(r.height);
+      setColWidth(Math.max(r.width - 16, 40));
     };
     measure();
     window.addEventListener("resize", measure);
@@ -134,86 +152,154 @@ function App() {
     return () => { window.removeEventListener("resize", measure); ro.disconnect(); };
   }, []);
 
-  // 자동완성 실행
-  const runAutoComplete = useCallback((s: GameState) => {
-    if (autoRunning) return;
-    const moves = buildAutoCompleteSequence(s);
-    if (moves.length === 0) return;
+  // 캐릭터 등장
+  const showChar = useCallback((img: string, line: string) => {
+    setCharImg(img); setCharLine(line); setCharVisible(true);
+    const t = setTimeout(() => setCharBubbleVisible(true), 400);
+    timersRef.current.push(t);
+  }, []);
 
+  // 캐릭터 퇴장
+  const hideChar = useCallback((delay: number) => {
+    const t1 = setTimeout(() => {
+      setCharBubbleVisible(false);
+      const t2 = setTimeout(() => setCharVisible(false), 500);
+      timersRef.current.push(t2);
+    }, delay);
+    timersRef.current.push(t1);
+  }, []);
+
+  // ── 자동완성 ──
+  const runAutoComplete = useCallback((s: GameState) => {
+    // 이미 실행 중이면 절대 재진입 금지
+    if (autoRunningRef.current) return;
+    const moves = buildAutoCompleteSequence(s);
+    if (moves.length === 0) { autoRunningRef.current = false; return; }
+
+    autoRunningRef.current = true;
     setAutoRunning(true);
 
-    // 1. 토토로 등장
-    const line = TOTORO_LINES[Math.floor(Math.random() * TOTORO_LINES.length)];
-    setTotoroLine(line);
-    setShowTotoro(true);
-    setTimeout(() => setTotoroVisible(true), 50);
+    // 최종 상태 미리 계산
+    let finalState = s;
+    for (const move of moves) {
+      const next = moveStack(finalState, { fromCol: move.fromCol, fromIndex: move.fromIndex }, move.toCol);
+      if (next === finalState) break;
+      finalState = next;
+    }
 
-    // 2. 1.2초 후 카드 자동 이동 시작
-    const CARD_DELAY = 320; // 카드 하나당 딜레이(ms)
-    const startDelay = 1400;
+    showChar("/megumi.jpeg", AUTO_LINES[Math.floor(Math.random() * AUTO_LINES.length)]);
 
-    let currentState = s;
+    // 카드 플래시 애니메이션 — 80ms 간격
+    const INTERVAL = 80;
+    const START = 1200;
     moves.forEach((move, i) => {
       const t = setTimeout(() => {
-        currentState = moveStack(currentState, { fromCol: move.fromCol, fromIndex: move.fromIndex }, move.toCol);
-        setState(currentState);
-        // 스택 완성 감지
-        if (currentState.foundation.length > (i === 0 ? s.foundation.length : currentState.foundation.length - 1)) {
-          playStackClear();
-        } else {
-          playCardMove();
+        const cur = stateRef.current;
+        const card = cur.columns[move.fromCol]?.[move.fromIndex];
+        if (card) {
+          setAnimCardIds(prev => { const n = new Set(prev); n.add(card.id); return n; });
+          setTimeout(() => setAnimCardIds(prev => { const n = new Set(prev); n.delete(card.id); return n; }), 60);
         }
-      }, startDelay + i * CARD_DELAY);
-      autoTimersRef.current.push(t);
+        playCardMove();
+      }, START + i * INTERVAL);
+      timersRef.current.push(t);
     });
 
-    // 3. 완성 후 토토로 퇴장 + 승리 화면
-    const totalTime = startDelay + moves.length * CARD_DELAY + 600;
-    const endTimer = setTimeout(() => {
-      setTotoroVisible(false);
-      setTimeout(() => {
-        setShowTotoro(false);
-        setAutoRunning(false);
-      }, 500);
-    }, totalTime);
-    autoTimersRef.current.push(endTimer);
-  }, [autoRunning]);
+    // 이동 완료 후 최종 상태 한 번에 적용
+    const totalMs = START + moves.length * INTERVAL + 100;
+    const t2 = setTimeout(() => {
+      // 잠금 먼저 해제 후 state 적용 — won 감지 useEffect가 정상 동작하도록
+      autoRunningRef.current = false;
+      setAutoRunning(false);
+      setAnimCardIds(new Set());
+      setState(finalState);
+      playStackClear();
+      setTimeout(() => playStackClear(), 180);
+    }, totalMs);
+    timersRef.current.push(t2);
 
-  // 승리 감지 + 전적
+    // 캐릭터 퇴장
+    hideChar(totalMs + 300);
+  }, [showChar, hideChar]);
+
+  // ── 패배 선언 ──
+  const declareLose = useCallback(() => {
+    if (autoRunningRef.current) return;
+    setShowLose(true);
+    playLoseSound();
+    showChar("/lost.webp", LOSE_LINES[Math.floor(Math.random() * LOSE_LINES.length)]);
+    hideChar(2800);
+    setRecord(prev => {
+      const next = { ...prev, plays: prev.plays + 1, currentStreak: 0 };
+      saveRecord(next); return next;
+    });
+    hasMovedRef.current = false;
+  }, [showChar, hideChar]);
+
+  // ── 이동 후 자동완성/패배 체크 — useEffect 대신 직접 호출 ──
+  const checkAfterMove = useCallback((nextState: GameState) => {
+    if (autoRunningRef.current) return;
+    if (nextState.status !== "playing") return;
+
+    // 패배 타이머 취소 (새 이동 시 리셋)
+    if (loseTimerRef.current) { clearTimeout(loseTimerRef.current); loseTimerRef.current = null; }
+
+    // 패배 조건 1: 이동 불가
+    if (nextState.stock.length === 0 && hasMovedRef.current && !hasAnyMove(nextState)) {
+      loseTimerRef.current = setTimeout(() => declareLose(), 3000);
+      return;
+    }
+
+    // 패배 조건 2: 무한루프 감지
+    if (nextState.stock.length === 0 && hasMovedRef.current) {
+      const sig = getStateSignature(nextState);
+      const recent = recentSigsRef.current;
+      if (recent.filter(s => s === sig).length >= 2) {
+        loseTimerRef.current = setTimeout(() => declareLose(), 3000);
+        return;
+      }
+      recentSigsRef.current = [...recent.slice(-19), sig];
+    }
+  }, [runAutoComplete, declareLose]);
+
+  // 승리 감지
   useEffect(() => {
     if (state.status === "won" && !showWin) {
       setShowWin(true);
       playWinSound();
       setRecord(prev => {
-        const newStreak = prev.currentStreak + 1;
-        const newBest = Math.max(newStreak, prev.bestStreak);
-        setIsBestStreak(newStreak > prev.bestStreak);
-        const next = { plays: prev.plays + 1, wins: prev.wins + 1, currentStreak: newStreak, bestStreak: newBest };
+        const ns = prev.currentStreak + 1;
+        const nb = Math.max(ns, prev.bestStreak);
+        setIsBestStreak(ns > prev.bestStreak);
+        const next = { plays: prev.plays + 1, wins: prev.wins + 1, currentStreak: ns, bestStreak: nb };
         saveRecord(next); return next;
       });
     }
   }, [state.status]);
 
-  // 매 이동 후 자동완성 가능 여부 체크
-  useEffect(() => {
-    if (!autoRunning && state.status === "playing" && canAutoComplete(state)) {
-      // 약간의 딜레이 후 자동완성 시작 (사용자가 마지막 이동 직후 보이도록)
-      const t = setTimeout(() => runAutoComplete(state), 600);
-      return () => clearTimeout(t);
-    }
-  }, [state, autoRunning]);
-
-  function findClosestColumnIndex(x: number): number | null {
-    let bestIdx: number | null = null; let bestDist = Infinity;
-    for (let i = 0; i < colRefs.current.length; i++) {
-      const el = colRefs.current[i]; if (!el) continue;
-      const rect = el.getBoundingClientRect();
-      const dist = Math.abs(x - (rect.left + rect.width / 2));
-      if (dist < bestDist) { bestDist = dist; bestIdx = i; }
-    }
-    return bestIdx;
+  function findClosestCol(x: number): number | null {
+    let best: number | null = null; let bestD = Infinity;
+    colRefs.current.forEach((el, i) => {
+      if (!el) return;
+      const r = el.getBoundingClientRect();
+      const d = Math.abs(x - (r.left + r.width / 2));
+      if (d < bestD) { bestD = d; best = i; }
+    });
+    return best;
   }
 
+  // 카드 이동 헬퍼 — 이동 후 checkAfterMove 호출
+  const doMove = useCallback((s: GameState, from: { fromCol: number; fromIndex: number }, toCol: number): GameState => {
+    const next = moveStack(s, from, toCol);
+    if (next !== s) {
+      hasMovedRef.current = true;
+      if (next.foundation.length > s.foundation.length) playStackClear(); else playCardMove();
+      checkAfterMove(next);
+    }
+    return next;
+  }, [checkAfterMove]);
+
+  // 포인터 이벤트
   useEffect(() => {
     function onMove(e: PointerEvent) {
       const pd = pointerDownRef.current;
@@ -232,18 +318,9 @@ function App() {
       pointerDownRef.current = null; isDraggingRef.current = false;
       setGhostPos(null); setGhostCards([]);
       if (wasDragging) {
-        const p = { fromCol: pd.colIdx, fromIndex: pd.cardIdx };
-        const targetIdx = findClosestColumnIndex(e.clientX);
-        if (targetIdx !== null) {
-          setState((s) => {
-            const next = moveStack(s, p, targetIdx);
-            if (next !== s) {
-              hasMovedRef.current = true;
-              if (next.foundation.length > s.foundation.length) playStackClear(); else playCardMove();
-            }
-            return next;
-          });
-        }
+        const from = { fromCol: pd.colIdx, fromIndex: pd.cardIdx };
+        const toCol = findClosestCol(e.clientX);
+        if (toCol !== null) setState(s => doMove(s, from, toCol));
         setPick(null); pickRef.current = null;
       } else {
         const s = stateRef.current;
@@ -254,21 +331,12 @@ function App() {
           if (cur.fromCol === pd.colIdx && cur.fromIndex === pd.cardIdx) {
             setPick(null); pickRef.current = null;
           } else {
-            setState((s2) => {
-              const next = moveStack(s2, cur, pd.colIdx);
-              if (next !== s2) {
-                hasMovedRef.current = true;
-                if (next.foundation.length > s2.foundation.length) playStackClear(); else playCardMove();
-              }
-              return next;
-            });
+            setState(s2 => doMove(s2, cur, pd.colIdx));
             setPick(null); pickRef.current = null;
           }
-        } else {
-          if (canPickStack(s.columns, pd.colIdx, pd.cardIdx)) {
-            setPick({ fromCol: pd.colIdx, fromIndex: pd.cardIdx });
-            pickRef.current = { fromCol: pd.colIdx, fromIndex: pd.cardIdx };
-          }
+        } else if (canPickStack(s.columns, pd.colIdx, pd.cardIdx)) {
+          setPick({ fromCol: pd.colIdx, fromIndex: pd.cardIdx });
+          pickRef.current = { fromCol: pd.colIdx, fromIndex: pd.cardIdx };
         }
       }
     }
@@ -287,37 +355,37 @@ function App() {
       window.removeEventListener("pointerup", onUp, opts);
       window.removeEventListener("pointercancel", onCancel, opts);
     };
-  }, []);
+  }, [doMove]);
 
   const startNewGame = (diff: Difficulty) => {
-    // 타이머 정리
-    autoTimersRef.current.forEach(clearTimeout);
-    autoTimersRef.current = [];
-    if (hasMovedRef.current && state.status === "playing") {
-      setRecord(prev => {
-        const next = { ...prev, plays: prev.plays + 1, currentStreak: 0 };
-        saveRecord(next); return next;
-      });
+    timersRef.current.forEach(clearTimeout); timersRef.current = [];
+    if (loseTimerRef.current) { clearTimeout(loseTimerRef.current); loseTimerRef.current = null; }
+    if (hasMovedRef.current && state.status === "playing" && !showLose) {
+      setRecord(prev => { const n = { ...prev, plays: prev.plays+1, currentStreak: 0 }; saveRecord(n); return n; });
     }
-    hasMovedRef.current = false;
+    hasMovedRef.current = false; recentSigsRef.current = [];
+    autoRunningRef.current = false; setAutoRunning(false); setAnimCardIds(new Set());
+    setCharVisible(false); setCharBubbleVisible(false);
     setDifficulty(diff); setState(newGame(diff));
     setPick(null); pickRef.current = null;
     pointerDownRef.current = null; isDraggingRef.current = false;
     setGhostPos(null); setGhostCards([]);
-    setShowWin(false); setIsBestStreak(false);
-    setAutoRunning(false); setShowTotoro(false); setTotoroVisible(false);
+    setShowWin(false); setShowLose(false); setIsBestStreak(false);
     setShowDiffModal(false);
   };
 
   const onDeal = () => {
     if (autoRunning) return;
+    if (loseTimerRef.current) { clearTimeout(loseTimerRef.current); loseTimerRef.current = null; }
     hasMovedRef.current = true;
-    setState((s) => dealFromStock(s));
+    setState(s => { const next = dealFromStock(s); checkAfterMove(next); return next; });
     setPick(null); pickRef.current = null;
   };
   const onUndo = () => {
     if (autoRunning) return;
-    setState((s) => undo(s)); setPick(null); pickRef.current = null;
+    if (loseTimerRef.current) { clearTimeout(loseTimerRef.current); loseTimerRef.current = null; }
+    setState(s => undo(s)); setPick(null); pickRef.current = null;
+    setShowLose(false);
   };
   const resetRecord = () => {
     const e: Record_ = { plays: 0, wins: 0, currentStreak: 0, bestStreak: 0 };
@@ -328,18 +396,18 @@ function App() {
   const canUndoAction = state.history.length > 0 && state.undoUsed < 3 && state.status === "playing" && !autoRunning;
   const diffLabel: Record<Difficulty, string> = { 1: "1 Suit", 2: "2 Suits", 4: "4 Suits" };
   const diffDesc: Record<Difficulty, string> = { 1: "초급", 2: "중급", 4: "고급" };
-  const stockPiles = Math.ceil(state.stock.length / 10);
   const winRate = record.plays > 0 ? Math.round((record.wins / record.plays) * 100) : 0;
 
   return (
     <div className="game">
-      {/* 승리 오버레이 */}
       {showWin && (
         <div className="win-overlay" onClick={() => setShowWin(false)}>
           <div className="win-confetti">
             {Array.from({ length: 40 }).map((_, i) => (
-              <div key={i} className="confetti-piece"
-                style={{ left: `${Math.random() * 100}%`, animationDelay: `${Math.random() * 1.5}s`, backgroundColor: ["#FFD700","#FF6B6B","#4ECDC4","#45B7D1","#96CEB4","#FFEAA7"][i % 6] }} />
+              <div key={i} className="confetti-piece" style={{
+                left: `${Math.random()*100}%`, animationDelay: `${Math.random()*1.5}s`,
+                backgroundColor: ["#FFD700","#FF6B6B","#4ECDC4","#45B7D1","#96CEB4","#FFEAA7"][i%6]
+              }} />
             ))}
           </div>
           <div className="win-modal">
@@ -347,19 +415,34 @@ function App() {
             <h2 className="win-title">Victory!</h2>
             <p className="win-subtitle">모든 8개 조합을 완성했어요!</p>
             {isBestStreak && <div className="win-best-badge">🎯 베스트 갱신! {record.bestStreak}연속</div>}
-            <button className="btn btn-primary win-btn" onClick={(e) => { e.stopPropagation(); setShowDiffModal(true); }}>다시 하기</button>
+            <button className="btn btn-primary win-btn" onClick={e => { e.stopPropagation(); setShowDiffModal(true); }}>다시 하기</button>
           </div>
         </div>
       )}
 
-      {/* 토토로 자동완성 이펙트 */}
-      {showTotoro && (
-        <div className={`totoro-overlay ${totoroVisible ? "visible" : ""}`}>
-          <div className="totoro-container">
-            <img src="/배경.webp" alt="totoro" className="totoro-img" />
-            <div className={`totoro-bubble ${totoroVisible ? "bubble-visible" : ""}`}>
-              <span>{totoroLine}</span>
+      {showLose && (
+        <div className="lose-overlay">
+          <div className="lose-modal">
+            <div className="lose-icon">💀</div>
+            <h2 className="lose-title">Game Over</h2>
+            <p className="lose-subtitle">더 이상 유효한 이동이 없어요</p>
+            <div className="lose-buttons">
+              <button className="btn btn-primary" onClick={() => setShowDiffModal(true)}>새 게임</button>
+              {canUndoAction && (
+                <button className="btn" onClick={() => { setShowLose(false); onUndo(); }}>
+                  되돌리기 ({3 - state.undoUsed}회 남음)
+                </button>
+              )}
             </div>
+          </div>
+        </div>
+      )}
+
+      {charVisible && (
+        <div className="totoro-overlay visible">
+          <div className="totoro-container">
+            <img src={charImg} alt="char" className="totoro-img" />
+            <div className={`totoro-bubble ${charBubbleVisible ? "bubble-visible" : ""}`}>{charLine}</div>
           </div>
         </div>
       )}
@@ -377,11 +460,17 @@ function App() {
         <div className="buttons">
           <button className="btn btn-primary" onClick={() => setShowDiffModal(true)}>새 게임</button>
           <button className="btn" onClick={onDeal} disabled={!canDeal}>
-            카드 뽑기{state.stock.length > 0 && <span className="btn-badge">{Math.floor(state.stock.length / 10)}</span>}
+            카드 뽑기{state.stock.length > 0 && <span className="btn-badge">{Math.floor(state.stock.length/10)}</span>}
           </button>
           <button className="btn" onClick={onUndo} disabled={!canUndoAction}>
             되돌리기{canUndoAction && <span className="btn-badge">{3 - state.undoUsed}</span>}
           </button>
+          {state.stock.length === 0 && state.status === "playing" && !autoRunning && !showLose && (
+            <button className="btn btn-auto" onClick={() => {
+              autoRunningRef.current = true;
+              setTimeout(() => runAutoComplete(stateRef.current), 100);
+            }}>✨ 자동완성</button>
+          )}
         </div>
       </header>
 
@@ -396,26 +485,22 @@ function App() {
         <div className="stock-area" onClick={canDeal ? onDeal : undefined}>
           {state.stock.length > 0 ? (
             <div className="stock-stack">
-              {Array.from({ length: Math.min(stockPiles, 5) }).map((_, i) => (
-                <div key={i} className="stock-card" style={{ transform: `translateY(${-i * 3}px) translateX(${i * 2}px)` }} />
+              {Array.from({ length: Math.min(Math.ceil(state.stock.length/10), 5) }).map((_, i) => (
+                <div key={i} className="stock-card" style={{ transform: `translateY(${-i*3}px) translateX(${i*2}px)` }} />
               ))}
-              <span className="stock-count">{Math.floor(state.stock.length / 10)}</span>
+              <span className="stock-count">{Math.floor(state.stock.length/10)}</span>
             </div>
           ) : <div className="stock-empty">비었음</div>}
         </div>
 
-        <div className="board">
+        <div className={`board ${autoRunning ? "auto-running" : ""}`}>
           {state.columns.map((col, colIdx) => (
             <div className="column" key={colIdx}
-              ref={(el) => { colRefs.current[colIdx] = el; }}
+              ref={el => { colRefs.current[colIdx] = el; }}
               onPointerUp={() => {
                 if (!isDraggingRef.current && col.length === 0 && pickRef.current) {
                   const cur = pickRef.current;
-                  setState((s) => {
-                    const next = moveStack(s, cur, colIdx);
-                    if (next !== s) { hasMovedRef.current = true; playCardMove(); }
-                    return next;
-                  });
+                  setState(s => doMove(s, cur, colIdx));
                   setPick(null); pickRef.current = null;
                 }
               }}
@@ -423,22 +508,22 @@ function App() {
               {col.length === 0 && <div className="empty-col-hint">빈 열</div>}
               {col.map((card, cardIdx) => {
                 const isSelected = pick?.fromCol === colIdx && pick?.fromIndex === cardIdx;
+                const isFlashing = animCardIds.has(card.id);
                 const topPx = (() => {
                   if (col.length <= 1) return 8;
                   const cardH = colHeight * 0.55;
-                  const available = colHeight - cardH - 16;
-                  const maxStep = available / (col.length - 1);
-                  return 8 + Math.max(14, Math.min(maxStep, 30)) * cardIdx;
+                  const avail = colHeight - cardH - 16;
+                  const step = avail / (col.length - 1);
+                  return 8 + Math.max(14, Math.min(step, 30)) * cardIdx;
                 })();
                 return (
                   <div
-                    className={`card ${card.faceUp ? "up" : "down"} ${(card.suit === "H" || card.suit === "D") ? "redCard" : ""} ${isSelected ? "selected" : ""}`}
+                    className={`card ${card.faceUp ? "up" : "down"} ${(card.suit==="H"||card.suit==="D") ? "redCard" : ""} ${isSelected ? "selected" : ""} ${isFlashing ? "card-autocomplete-flash" : ""}`}
                     key={card.id}
-                    style={{ top: topPx, zIndex: isSelected ? 500 : card.faceUp ? 100 + cardIdx : cardIdx }}
-                    onPointerDown={(e) => {
-                      if (autoRunning) return;
-                      if (!card.faceUp) return;
-                      if (!canPickStack(state.columns, colIdx, cardIdx)) return;
+                    style={{ top: topPx, zIndex: isSelected ? 500 : card.faceUp ? 100+cardIdx : cardIdx }}
+                    onPointerDown={e => {
+                      if (autoRunning || showLose) return;
+                      if (!card.faceUp || !canPickStack(state.columns, colIdx, cardIdx)) return;
                       e.preventDefault(); e.stopPropagation();
                       (e.currentTarget as HTMLDivElement).setPointerCapture(e.pointerId);
                       pointerDownRef.current = { x: e.clientX, y: e.clientY, colIdx, cardIdx, pointerId: e.pointerId };
@@ -456,23 +541,21 @@ function App() {
         </div>
       </div>
 
-      {/* 드래그 고스트 */}
       {ghostPos && ghostCards.length > 0 && (
         <div className="ghost-stack" style={{ left: ghostPos.x, top: ghostPos.y, width: colWidth }}>
           {ghostCards.map((card, idx) => (
             <div key={card.id}
-              className={`ghost-card card up ${card.suit === "H" || card.suit === "D" ? "redCard" : ""}`}
-              style={{ top: idx * Math.min(28, colWidth * 0.32), width: colWidth }}>
+              className={`ghost-card card up ${(card.suit==="H"||card.suit==="D") ? "redCard" : ""}`}
+              style={{ top: idx * Math.min(28, colWidth*0.32), width: colWidth }}>
               <CardView card={card} />
             </div>
           ))}
         </div>
       )}
 
-      {/* 전적 모달 */}
       {showRecord && (
         <div className="modal-overlay" onClick={() => setShowRecord(false)}>
-          <div className="modal" onClick={(e) => e.stopPropagation()}>
+          <div className="modal" onClick={e => e.stopPropagation()}>
             <h2>📊 전적</h2>
             <div className="record-grid">
               <div className="record-item"><span className="record-label">플레이</span><span className="record-value">{record.plays}</span></div>
@@ -495,16 +578,15 @@ function App() {
         </div>
       )}
 
-      {/* 난이도 모달 */}
       {showDiffModal && (
         <div className="modal-overlay" onClick={() => setShowDiffModal(false)}>
-          <div className="modal" onClick={(e) => e.stopPropagation()}>
+          <div className="modal" onClick={e => e.stopPropagation()}>
             <h2>난이도 선택</h2>
             <p>새 게임을 시작할 난이도를 선택하세요</p>
             <div className="diff-options">
-              {([1, 2, 4] as Difficulty[]).map((d) => (
-                <button key={d} className={`diff-btn ${difficulty === d ? "active" : ""}`} onClick={() => startNewGame(d)}>
-                  <span className="diff-suits">{d === 1 ? "♠" : d === 2 ? "♠♥" : "♠♥♦♣"}</span>
+              {([1,2,4] as Difficulty[]).map(d => (
+                <button key={d} className={`diff-btn ${difficulty===d ? "active" : ""}`} onClick={() => startNewGame(d)}>
+                  <span className="diff-suits">{d===1 ? "♠" : d===2 ? "♠♥" : "♠♥♦♣"}</span>
                   <span className="diff-name">{diffLabel[d]}</span>
                   <span className="diff-sub">{diffDesc[d]}</span>
                 </button>
