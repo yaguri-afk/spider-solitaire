@@ -10,7 +10,7 @@ import {
   suitLabel,
   undo,
 } from "./game/game";
-import type { GameState } from "./game/types";
+import type { GameState, Card } from "./game/types";
 import type { Difficulty } from "./game/types";
 
 const DRAG_THRESHOLD = 6;
