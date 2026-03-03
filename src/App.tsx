@@ -4,7 +4,7 @@ import "./App.css";
 import {
   canPickStack, dealFromStock, moveStack, newGame, rankLabel, suitLabel, undo,
 } from "./game/game";
-import { buildAutoCompleteSequence, hasAnyMove, getStateSignature } from "./game/autoComplete";
+import { buildAutoCompleteSequence, hasAnyMove, getStateSignature, isAutoCompleteReady, isDeadlock } from "./game/autoComplete";
 import type { GameState, Card, Difficulty } from "./game/types";
 
 const DRAG_THRESHOLD = 6;
@@ -81,6 +81,13 @@ const AUTO_LINES = [
   "후루베 유라유라… 시간 낭비하지 말고 끝내자.",
   "후루베 유라유라… 딱 이번 한 번만이야.",
 ];
+const NOT_READY_LINES = [
+  "아직 멀었어. 스스로 해봐.",
+  "지금은 안 돼. 더 해봐.",
+  "아직이야. 포기하지 마.",
+  "이 정도로 도움을 청하는 거야?",
+  "좀 더 생각해봐. 아직 수가 있을 거야.",
+];
 const LOSE_LINES = [
   "졌군. 뭐 그럴 줄 알았어.",
   "이게 한계냐. 딱히 놀랍지도 않아.",
@@ -108,8 +115,7 @@ function App() {
   const [isBestStreak, setIsBestStreak] = useState(false);
   const hasMovedRef = useRef(false);
 
-  // 자동완성
-  const autoRunningRef = useRef(false);  // 단일 진실 소스 — state 아닌 ref로만 관리
+  const autoRunningRef = useRef(false);
   const [autoRunning, setAutoRunning] = useState(false);
   const [animCardIds, setAnimCardIds] = useState<Set<string>>(new Set());
 
@@ -136,7 +142,6 @@ function App() {
   const stateRef = useRef(state);
   stateRef.current = state;
 
-  // 열 크기 측정
   useEffect(() => {
     const measure = () => {
       const el = colRefs.current.find(Boolean);
@@ -155,7 +160,7 @@ function App() {
   // 캐릭터 등장
   const showChar = useCallback((img: string, line: string) => {
     setCharImg(img); setCharLine(line); setCharVisible(true);
-    const t = setTimeout(() => setCharBubbleVisible(true), 400);
+    const t = setTimeout(() => setCharBubbleVisible(true), 300);
     timersRef.current.push(t);
   }, []);
 
@@ -169,17 +174,13 @@ function App() {
     timersRef.current.push(t1);
   }, []);
 
-  // ── 자동완성 ──
+  // ── 자동완성 실행 ──
   const runAutoComplete = useCallback((s: GameState) => {
-    // 이미 실행 중이면 절대 재진입 금지
     if (autoRunningRef.current) return;
     const moves = buildAutoCompleteSequence(s);
-    if (moves.length === 0) { autoRunningRef.current = false; return; }
+    if (moves.length === 0) return;
 
-    autoRunningRef.current = true;
-    setAutoRunning(true);
-
-    // 최종 상태 미리 계산
+    // 최종 상태 미리 계산 (게임 로직은 여기서만)
     let finalState = s;
     for (const move of moves) {
       const next = moveStack(finalState, { fromCol: move.fromCol, fromIndex: move.fromIndex }, move.toCol);
@@ -187,48 +188,75 @@ function App() {
       finalState = next;
     }
 
+    autoRunningRef.current = true;
+    setAutoRunning(true);
+
     showChar("/megumi.jpeg", AUTO_LINES[Math.floor(Math.random() * AUTO_LINES.length)]);
 
-    // 카드 플래시 애니메이션 — 80ms 간격
-    const INTERVAL = 80;
-    const START = 1200;
-    moves.forEach((move, i) => {
+    // 애니메이션: 각 열의 카드들을 순서대로 플래시만 표시
+    const INTERVAL = 60;
+    const START = 1400;
+
+    // 모든 앞면 카드를 순서대로 플래시
+    const allCards: { id: string; fromCol: number; cardIdx: number }[] = [];
+    s.columns.forEach((col, fromCol) => {
+      col.forEach((card, cardIdx) => {
+        if (card.faceUp) allCards.push({ id: card.id, fromCol, cardIdx });
+      });
+    });
+
+    allCards.forEach((item, i) => {
       const t = setTimeout(() => {
-        const cur = stateRef.current;
-        const card = cur.columns[move.fromCol]?.[move.fromIndex];
-        if (card) {
-          setAnimCardIds(prev => { const n = new Set(prev); n.add(card.id); return n; });
-          setTimeout(() => setAnimCardIds(prev => { const n = new Set(prev); n.delete(card.id); return n; }), 60);
-        }
+        setAnimCardIds(prev => { const n = new Set(prev); n.add(item.id); return n; });
+        setTimeout(() => setAnimCardIds(prev => { const n = new Set(prev); n.delete(item.id); return n; }), 80);
         playCardMove();
       }, START + i * INTERVAL);
       timersRef.current.push(t);
     });
 
-    // 이동 완료 후 최종 상태 한 번에 적용
-    const totalMs = START + moves.length * INTERVAL + 100;
+    const totalMs = START + allCards.length * INTERVAL + 100;
+
+    // 애니메이션 완료 후 최종 상태 한 번에 적용
     const t2 = setTimeout(() => {
-      // 잠금 먼저 해제 후 state 적용 — won 감지 useEffect가 정상 동작하도록
-      autoRunningRef.current = false;
-      setAutoRunning(false);
-      setAnimCardIds(new Set());
       setState(finalState);
       playStackClear();
       setTimeout(() => playStackClear(), 180);
+      setTimeout(() => playStackClear(), 360);
     }, totalMs);
     timersRef.current.push(t2);
 
+    // 잠금 해제
+    const t3 = setTimeout(() => {
+      autoRunningRef.current = false;
+      setAutoRunning(false);
+      setAnimCardIds(new Set());
+    }, totalMs + 600);
+    timersRef.current.push(t3);
+
     // 캐릭터 퇴장
-    hideChar(totalMs + 300);
+    hideChar(totalMs + 200);
   }, [showChar, hideChar]);
+
+  // ── 자동완성 버튼 클릭 ──
+  const onAutoComplete = useCallback(() => {
+    const s = stateRef.current;
+    if (isAutoCompleteReady(s)) {
+      runAutoComplete(s);
+    } else {
+      // 승리 확정 아닐 때: "아직 멀었어" 멘트만, 빠르게 퇴장
+      showChar("/megumi.jpeg", NOT_READY_LINES[Math.floor(Math.random() * NOT_READY_LINES.length)]);
+      hideChar(1500);
+    }
+  }, [runAutoComplete, showChar, hideChar]);
 
   // ── 패배 선언 ──
   const declareLose = useCallback(() => {
     if (autoRunningRef.current) return;
+    if (stateRef.current.status !== "playing") return;
     setShowLose(true);
     playLoseSound();
     showChar("/lost.webp", LOSE_LINES[Math.floor(Math.random() * LOSE_LINES.length)]);
-    hideChar(2800);
+    hideChar(3000);
     setRecord(prev => {
       const next = { ...prev, plays: prev.plays + 1, currentStreak: 0 };
       saveRecord(next); return next;
@@ -236,31 +264,31 @@ function App() {
     hasMovedRef.current = false;
   }, [showChar, hideChar]);
 
-  // ── 이동 후 자동완성/패배 체크 — useEffect 대신 직접 호출 ──
+  // ── 이동 후 패배 체크 ──
   const checkAfterMove = useCallback((nextState: GameState) => {
     if (autoRunningRef.current) return;
     if (nextState.status !== "playing") return;
 
-    // 패배 타이머 취소 (새 이동 시 리셋)
+    // 기존 패배 타이머 취소
     if (loseTimerRef.current) { clearTimeout(loseTimerRef.current); loseTimerRef.current = null; }
 
-    // 패배 조건 1: 이동 불가
-    if (nextState.stock.length === 0 && hasMovedRef.current && !hasAnyMove(nextState)) {
+    // 패배 조건: 스톡 없음 + 이동 불가
+    if (isDeadlock(nextState) && hasMovedRef.current) {
       loseTimerRef.current = setTimeout(() => declareLose(), 3000);
       return;
     }
 
-    // 패배 조건 2: 무한루프 감지
+    // 무한루프 감지 (스톡 없을 때만)
     if (nextState.stock.length === 0 && hasMovedRef.current) {
       const sig = getStateSignature(nextState);
       const recent = recentSigsRef.current;
-      if (recent.filter(s => s === sig).length >= 2) {
+      if (recent.filter(s => s === sig).length >= 3) {
         loseTimerRef.current = setTimeout(() => declareLose(), 3000);
         return;
       }
-      recentSigsRef.current = [...recent.slice(-19), sig];
+      recentSigsRef.current = [...recent.slice(-29), sig];
     }
-  }, [runAutoComplete, declareLose]);
+  }, [declareLose]);
 
   // 승리 감지
   useEffect(() => {
@@ -288,7 +316,6 @@ function App() {
     return best;
   }
 
-  // 카드 이동 헬퍼 — 이동 후 checkAfterMove 호출
   const doMove = useCallback((s: GameState, from: { fromCol: number; fromIndex: number }, toCol: number): GameState => {
     const next = moveStack(s, from, toCol);
     if (next !== s) {
@@ -299,7 +326,6 @@ function App() {
     return next;
   }, [checkAfterMove]);
 
-  // 포인터 이벤트
   useEffect(() => {
     function onMove(e: PointerEvent) {
       const pd = pointerDownRef.current;
@@ -397,9 +423,12 @@ function App() {
   const diffLabel: Record<Difficulty, string> = { 1: "1 Suit", 2: "2 Suits", 4: "4 Suits" };
   const diffDesc: Record<Difficulty, string> = { 1: "초급", 2: "중급", 4: "고급" };
   const winRate = record.plays > 0 ? Math.round((record.wins / record.plays) * 100) : 0;
+  // 자동완성 버튼: 스톡 없고 게임 중일 때 항상 표시 (승리 확정 여부는 내부에서 판단)
+  const showAutoBtn = state.stock.length === 0 && state.status === "playing" && !autoRunning && !showLose;
 
   return (
     <div className="game">
+      {/* 승리 오버레이 */}
       {showWin && (
         <div className="win-overlay" onClick={() => setShowWin(false)}>
           <div className="win-confetti">
@@ -420,6 +449,7 @@ function App() {
         </div>
       )}
 
+      {/* 패배 오버레이 */}
       {showLose && (
         <div className="lose-overlay">
           <div className="lose-modal">
@@ -438,11 +468,12 @@ function App() {
         </div>
       )}
 
+      {/* 캐릭터 이펙트 — 화면 가운데 */}
       {charVisible && (
-        <div className="totoro-overlay visible">
-          <div className="totoro-container">
-            <img src={charImg} alt="char" className="totoro-img" />
-            <div className={`totoro-bubble ${charBubbleVisible ? "bubble-visible" : ""}`}>{charLine}</div>
+        <div className="char-overlay">
+          <div className="char-container">
+            <img src={charImg} alt="char" className="char-img" />
+            <div className={`char-bubble ${charBubbleVisible ? "bubble-visible" : ""}`}>{charLine}</div>
           </div>
         </div>
       )}
@@ -465,11 +496,8 @@ function App() {
           <button className="btn" onClick={onUndo} disabled={!canUndoAction}>
             되돌리기{canUndoAction && <span className="btn-badge">{3 - state.undoUsed}</span>}
           </button>
-          {state.stock.length === 0 && state.status === "playing" && !autoRunning && !showLose && (
-            <button className="btn btn-auto" onClick={() => {
-              autoRunningRef.current = true;
-              setTimeout(() => runAutoComplete(stateRef.current), 100);
-            }}>✨ 자동완성</button>
+          {showAutoBtn && (
+            <button className="btn btn-auto" onClick={onAutoComplete}>✨ 자동완성</button>
           )}
         </div>
       </header>

@@ -1,3 +1,83 @@
+
+/* ── 캐릭터 이펙트 (화면 가운데) ── */
+.char-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 12000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  animation: charFadeIn 0.4s ease;
+}
+
+@keyframes charFadeIn {
+  from { opacity: 0; transform: scale(0.8); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+.char-container {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.char-img {
+  width: 220px;
+  height: 220px;
+  object-fit: cover;
+  object-position: 50% 20%;
+  border-radius: 50%;
+  border: 4px solid rgba(255, 255, 255, 0.5);
+  box-shadow: 0 8px 40px rgba(0,0,0,0.6);
+  animation: charBob 2s ease-in-out infinite;
+}
+
+@keyframes charBob {
+  0%, 100% { transform: translateY(0); }
+  50%       { transform: translateY(-10px); }
+}
+
+.char-bubble {
+  position: absolute;
+  top: -60px;
+  left: 50%;
+  transform: translateX(-50%) scale(0.5);
+  background: white;
+  color: #1a1a1a;
+  border-radius: 18px;
+  padding: 10px 18px;
+  font-size: 15px;
+  font-weight: 700;
+  white-space: nowrap;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+  opacity: 0;
+  transform-origin: bottom center;
+  transition: opacity 0.3s ease, transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.char-bubble.bubble-visible {
+  opacity: 1;
+  transform: translateX(-50%) scale(1);
+}
+
+.char-bubble::after {
+  content: "";
+  position: absolute;
+  bottom: -8px;
+  left: 50%;
+  transform: translateX(-50%);
+  border-left: 8px solid transparent;
+  border-right: 8px solid transparent;
+  border-top: 8px solid white;
+}
+
+@media (max-width: 600px) {
+  .char-img { width: 150px; height: 150px; }
+  .char-bubble { font-size: 13px; }
+}
+
 /* ── 폰트 ── */
 @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;900&display=swap');
 
@@ -459,85 +539,6 @@ body {
 .win-btn {
   font-size: 16px;
   padding: 12px 32px;
-}
-
-
-
-/* ── 토토로 자동완성 이펙트 ── */
-.totoro-overlay {
-  position: fixed;
-  bottom: -300px;
-  right: 40px;
-  z-index: 15000;
-  pointer-events: none;
-  transition: bottom 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
-}
-
-.totoro-overlay.visible {
-  bottom: 20px;
-}
-
-.totoro-container {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-}
-
-.totoro-img {
-  width: 160px;
-  height: 160px;
-  object-fit: cover;
-  object-position: 50% 20%; /* 메구미 얼굴/상반신 중심 */
-  border-radius: 50%;
-  border: 3px solid rgba(255, 255, 255, 0.4);
-  box-shadow: 0 8px 32px rgba(0,0,0,0.5);
-  animation: totoroBob 2s ease-in-out infinite;
-}
-
-@keyframes totoroBob {
-  0%, 100% { transform: translateY(0); }
-  50%       { transform: translateY(-8px); }
-}
-
-.totoro-bubble {
-  position: absolute;
-  bottom: 150px;
-  right: 150px;
-  background: white;
-  color: #333;
-  border-radius: 18px 18px 4px 18px;
-  padding: 10px 16px;
-  font-size: 14px;
-  font-weight: 600;
-  white-space: nowrap;
-  box-shadow: 0 4px 16px rgba(0,0,0,0.3);
-  opacity: 0;
-  transform: scale(0.5) translateY(10px);
-  transform-origin: bottom right;
-  transition: opacity 0.3s ease 0.4s, transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) 0.4s;
-}
-
-.totoro-bubble.bubble-visible {
-  opacity: 1;
-  transform: scale(1) translateY(0);
-}
-
-.totoro-bubble::after {
-  content: "";
-  position: absolute;
-  bottom: -8px;
-  right: 16px;
-  width: 0; height: 0;
-  border-left: 8px solid transparent;
-  border-right: 0px solid transparent;
-  border-top: 8px solid white;
-}
-
-@media (max-width: 600px) {
-  .totoro-img { width: 110px; height: 110px; }
-  .totoro-bubble { font-size: 12px; right: 110px; bottom: 105px; }
-  .totoro-overlay { right: 10px; }
 }
 
 
