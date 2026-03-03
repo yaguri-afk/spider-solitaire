@@ -4,7 +4,7 @@ import "./App.css";
 import {
   canPickStack, dealFromStock, moveStack, newGame, rankLabel, suitLabel, undo,
 } from "./game/game";
-import { buildAutoCompleteSequence, hasAnyMove, getStateSignature, isAutoCompleteReady, isDeadlock } from "./game/autoComplete";
+import { buildAutoCompleteSequence, getStateSignature, isAutoCompleteReady, isDeadlock } from "./game/autoComplete";
 import type { GameState, Card, Difficulty } from "./game/types";
 
 const DRAG_THRESHOLD = 6;
