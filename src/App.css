@@ -1,4 +1,49 @@
 
+/* ── 위험 경고 모달 ── */
+.danger-modal {
+  border: 2px solid rgba(251, 191, 36, 0.6);
+  background: linear-gradient(135deg, rgba(20, 10, 0, 0.97), rgba(40, 20, 0, 0.97));
+}
+.danger-icon {
+  font-size: 3rem;
+  text-align: center;
+  margin-bottom: 8px;
+  animation: dangerPulse 1s ease-in-out infinite;
+}
+@keyframes dangerPulse {
+  0%, 100% { transform: scale(1); }
+  50%       { transform: scale(1.15); }
+}
+.danger-title {
+  text-align: center;
+  color: #fbbf24;
+  font-size: 1.4rem;
+  margin-bottom: 12px;
+}
+.danger-reasons {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.danger-reasons li {
+  background: rgba(251, 191, 36, 0.12);
+  border-left: 3px solid #fbbf24;
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 13px;
+  color: #fde68a;
+}
+.danger-desc {
+  text-align: center;
+  color: rgba(255,255,255,0.7);
+  font-size: 14px;
+  margin-bottom: 16px;
+}
+
+
 /* ── 캐릭터 이펙트 (화면 가운데) ── */
 .char-overlay {
   position: fixed;
@@ -89,21 +134,26 @@
 body {
   margin: 0;
   background-color: #0e3b2a;
-  min-height: 100vh;
+  height: 100vh;
+  max-height: 100vh;
+  overflow: hidden;
   color: white;
   font-family: 'Outfit', Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
-  overflow-x: hidden;
 }
 
 /* ── 전체 레이아웃 ── */
 .game {
-  min-height: 100vh;
+  height: 100vh;
+  max-height: 100vh;
+  overflow: hidden;
   padding: 12px 14px 20px;
+  box-sizing: border-box;
   display: flex;
   flex-direction: column;
   gap: 10px;
   position: relative;
+  --col-h: 580px;
   /* 배경 이미지를 .game에 직접 적용 */
   background-color: #0e3b2a;
   background-image:
@@ -273,12 +323,15 @@ body {
   flex-direction: column;
   gap: 8px;
   flex: 1;
+  min-height: 0;        /* flex 자식이 부모를 넘치지 않도록 */
+  overflow: hidden;
 }
 
 /* Foundation + Stock 상단 영역 */
 .foundation-area {
   display: flex;
   gap: 5px;
+  flex-shrink: 0;        /* foundation이 줄어들지 않도록 */
 }
 
 .foundation-slot {
@@ -305,6 +358,10 @@ body {
 .stock-area {
   cursor: pointer;
   user-select: none;
+  height: 36px;          /* 고정 높이 — stock/empty 전환 시 레이아웃 흔들림 방지 */
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
 }
 
 .stock-stack {
@@ -347,6 +404,7 @@ body {
   grid-template-columns: repeat(10, minmax(0, 1fr));
   gap: 5px;
   flex: 1;
+  min-height: 0;        /* grid가 부모를 밀어내지 않도록 */
   touch-action: pan-x;
 }
 
@@ -355,8 +413,8 @@ body {
   border-radius: 10px;
   background: rgba(0, 0, 0, 0.15);
   border: 1px solid rgba(255, 255, 255, 0.06);
-  /* 동적 높이: 뷰포트 기반 */
-  height: clamp(380px, 72vh, 780px);
+  /* 고정 높이 — JS ResizeObserver 의존 제거로 판 크기 변동 방지 */
+  height: var(--col-h, 580px);
   padding: 8px;
   overflow: hidden;
   transition: outline 0.1s, box-shadow 0.1s;
@@ -381,6 +439,12 @@ body {
   opacity: 0.2;
   pointer-events: none;
 }
+
+
+@media (max-height: 700px) { .game { --col-h: calc(100vh - 160px); } }
+@media (min-height: 700px) and (max-height: 850px) { .game { --col-h: calc(100vh - 170px); } }
+@media (min-height: 850px) and (max-height: 1000px) { .game { --col-h: calc(100vh - 180px); } }
+@media (min-height: 1000px) { .game { --col-h: calc(100vh - 190px); } }
 
 /* ── 카드 공통 ── */
 .card {

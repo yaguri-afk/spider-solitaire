@@ -4,7 +4,8 @@ import "./App.css";
 import {
   canPickStack, dealFromStock, moveStack, newGame, rankLabel, suitLabel, undo,
 } from "./game/game";
-import { buildAutoCompleteSequence, getStateSignature, isAutoCompleteReady, isDeadlock } from "./game/autoComplete";
+import { buildAutoCompleteSequence, getStateSignature, isAutoCompleteReady, isDeadlock, analyzeDanger } from "./game/autoComplete";
+import type { DangerLevel } from "./game/autoComplete";
 import type { GameState, Card, Difficulty } from "./game/types";
 
 const DRAG_THRESHOLD = 6;
@@ -75,11 +76,24 @@ async function playLoseSound() {
 }
 
 const AUTO_LINES = [
+  // 후루베 유라유라 시리즈
   "후루베 유라유라… 별수 없으니 내가 마무리해준다.",
   "후루베 유라유라… 네가 못 하니까 어쩔 수 없잖아.",
   "후루베 유라유라… 감사하단 말은 필요없어.",
   "후루베 유라유라… 시간 낭비하지 말고 끝내자.",
   "후루베 유라유라… 딱 이번 한 번만이야.",
+  "후루베 유라유라… 이 정도면 나한테 빚진 거야.",
+  "후루베 유라유라… 떠들지 마. 집중해야 하니까.",
+  // 냉소/무심 시리즈
+  "...도구는 쓸 줄 알아야 하는 법이야. 써줄게.",
+  "내가 나서는 건 딱히 너를 위해서가 아니야.",
+  "효율이 떨어져. 내가 끝낸다.",
+  "시간이 아까워. 내가 한다.",
+  "말 시키지 마. 그냥 보고 있어.",
+  "...이걸 못 끝낸다고? 어쩔 수 없네.",
+  "십종영법까지 쓸 필요도 없겠군.",
+  "이 정도 패턴, 읽는 데 3초면 충분해.",
+  "복잡하게 생각하지 마. 순서대로 하면 돼.",
 ];
 const NOT_READY_LINES = [
   "아직 멀었어. 스스로 해봐.",
@@ -87,6 +101,11 @@ const NOT_READY_LINES = [
   "아직이야. 포기하지 마.",
   "이 정도로 도움을 청하는 거야?",
   "좀 더 생각해봐. 아직 수가 있을 거야.",
+  "...눈 똑바로 떠. 길이 보일 거야.",
+  "포기가 빠르네. 조금만 더.",
+  "내가 나설 때가 아니야. 네가 할 수 있어.",
+  "아직 덜 됐어. 카드를 다시 봐.",
+  "그 수는 아직 남아있어. 잘 봐.",
 ];
 const LOSE_LINES = [
   "졌군. 뭐 그럴 줄 알았어.",
@@ -94,6 +113,36 @@ const LOSE_LINES = [
   "더 이상 수가 없어. 포기해.",
   "막혔군. 뭐, 나라도 어쩔 수 없었을 거야.",
   "끝났어. 다음엔 좀 잘해봐.",
+  "...죽은 패야. 인정해.",
+  "수읽기가 부족했어. 그게 전부야.",
+  "영법이 통하지 않을 때도 있어. 이번이 그래.",
+  "전략적 후퇴도 실력이야. 새로 시작해.",
+  "...할 말 없어. 결과가 다야.",
+  "이번 게임은 처음부터 꼬였어. 다시 해.",
+  "패배를 인정하는 것도 용기야. 뭐.",
+  "나쁘지 않은 싸움이었어. 결과가 문제지.",
+  "...적어도 끝까지 뒀잖아. 그걸로 됐어.",
+];
+
+const WARNING_LINES = [
+  "잠깐… 이거 좀 위험한 거 아니야? 뭐, 네 선택이지만.",
+  "이 상태… 솔직히 좋지 않아. 그래도 계속할 거야?",
+  "음… 수가 별로 없는데. 뭐, 포기하면 편하지.",
+  "이대로 가면 막힐 것 같은데. 내가 틀릴 수도 있지만.",
+  "...슬슬 경계해야 할 것 같은데.",
+  "패턴이 좋지 않아. 주의해.",
+  "이 방향으로 계속 가면… 음. 네 선택이야.",
+  "수가 좁아지고 있어. 느끼고 있지?",
+];
+const DANGER_LINES = [
+  "이거 거의 끝난 거 아니야? 뭐… 기적이 일어날 수도 있지.",
+  "솔직히 말할게. 이건 많이 위험해. 각오해.",
+  "이 상태에서 뒤집는 건… 나도 자신 없어.",
+  "포기하는 게 나을 것 같은데. 그래도 계속할 거라면 말리진 않아.",
+  "...거의 막다른 곳이야. 기적을 믿어봐.",
+  "영역전개도 이 패는 못 뒤집어. 각오해.",
+  "최악의 경우를 생각해둬. 지금 그 상황이야.",
+  "탈출구가 보이지 않아. 그래도 해볼 거야?",
 ];
 
 type Record_ = { plays: number; wins: number; currentStreak: number; bestStreak: number };
@@ -110,6 +159,8 @@ function App() {
   const [showDiffModal, setShowDiffModal] = useState(false);
   const [showWin, setShowWin] = useState(false);
   const [showLose, setShowLose] = useState(false);
+  const [dangerInfo, setDangerInfo] = useState<{ level: DangerLevel; reasons: string[] } | null>(null);
+  const [showDangerModal, setShowDangerModal] = useState(false);
   const [showRecord, setShowRecord] = useState(false);
   const [record, setRecord] = useState<Record_>(() => loadRecord());
   const [isBestStreak, setIsBestStreak] = useState(false);
@@ -128,6 +179,7 @@ function App() {
   const timersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
   const loseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const recentSigsRef = useRef<string[]>([]);
+  const noProgressRef = useRef<number>(0);  // 진전 없는 이동 횟수
 
   const [pick, setPick] = useState<{ fromCol: number; fromIndex: number } | null>(null);
   const [ghostPos, setGhostPos] = useState<{ x: number; y: number } | null>(null);
@@ -137,11 +189,12 @@ function App() {
   const isDraggingRef = useRef(false);
   const pickRef = useRef<{ fromCol: number; fromIndex: number } | null>(null);
   const colRefs = useRef<(HTMLDivElement | null)[]>([]);
-  const [colHeight, setColHeight] = useState(600);
+  const [colHeight, setColHeight] = useState(() => Math.max(window.innerHeight - 180, 380));
   const [colWidth, setColWidth] = useState(60);
   const stateRef = useRef(state);
   stateRef.current = state;
 
+  // 열 크기: resize 때만 업데이트 (초기값은 useState에서 계산)
   useEffect(() => {
     const measure = () => {
       const el = colRefs.current.find(Boolean);
@@ -150,11 +203,8 @@ function App() {
       setColHeight(r.height);
       setColWidth(Math.max(r.width - 16, 40));
     };
-    measure();
     window.addEventListener("resize", measure);
-    const ro = new ResizeObserver(measure);
-    colRefs.current.forEach(el => { if (el) ro.observe(el); });
-    return () => { window.removeEventListener("resize", measure); ro.disconnect(); };
+    return () => { window.removeEventListener("resize", measure); };
   }, []);
 
   // 캐릭터 등장
@@ -218,7 +268,12 @@ function App() {
 
     // 애니메이션 완료 후 최종 상태 한 번에 적용
     const t2 = setTimeout(() => {
-      setState(finalState);
+      // finalState.status가 won이 아닌 경우 대비:
+      // foundation 8개 완성이면 강제로 won 처리
+      const appliedState = finalState.foundation.length >= 8
+        ? { ...finalState, status: 'won' as const }
+        : finalState;
+      setState(appliedState);
       playStackClear();
       setTimeout(() => playStackClear(), 180);
       setTimeout(() => playStackClear(), 360);
@@ -264,31 +319,47 @@ function App() {
     hasMovedRef.current = false;
   }, [showChar, hideChar]);
 
-  // ── 이동 후 패배 체크 ──
+  // ── 이동 후 패배/위험 체크 ──
   const checkAfterMove = useCallback((nextState: GameState) => {
     if (autoRunningRef.current) return;
     if (nextState.status !== "playing") return;
 
-    // 기존 패배 타이머 취소
     if (loseTimerRef.current) { clearTimeout(loseTimerRef.current); loseTimerRef.current = null; }
 
-    // 패배 조건: 스톡 없음 + 이동 불가
-    if (isDeadlock(nextState) && hasMovedRef.current) {
-      loseTimerRef.current = setTimeout(() => declareLose(), 3000);
+    const danger = analyzeDanger(nextState, noProgressRef.current);
+
+    // 패배 확정
+    if (danger.level === 'deadlock' && hasMovedRef.current) {
+      loseTimerRef.current = setTimeout(() => declareLose(), 2500);
       return;
     }
 
-    // 무한루프 감지 (스톡 없을 때만)
+    // 무한루프 감지
     if (nextState.stock.length === 0 && hasMovedRef.current) {
       const sig = getStateSignature(nextState);
       const recent = recentSigsRef.current;
       if (recent.filter(s => s === sig).length >= 3) {
-        loseTimerRef.current = setTimeout(() => declareLose(), 3000);
+        loseTimerRef.current = setTimeout(() => declareLose(), 2500);
         return;
       }
       recentSigsRef.current = [...recent.slice(-29), sig];
     }
-  }, [declareLose]);
+
+    // 위험 경고 (스톡 없을 때만, 이미 경고 중이면 스킵)
+    if (!showDangerModal && hasMovedRef.current && nextState.stock.length === 0) {
+      if (danger.level === 'danger') {
+        const line = DANGER_LINES[Math.floor(Math.random() * DANGER_LINES.length)];
+        setDangerInfo({ level: danger.level, reasons: danger.reasons });
+        showChar("/megumi.jpeg", line);
+        hideChar(2000);
+        loseTimerRef.current = setTimeout(() => setShowDangerModal(true), 800);
+      } else if (danger.level === 'warning') {
+        const line = WARNING_LINES[Math.floor(Math.random() * WARNING_LINES.length)];
+        showChar("/megumi.jpeg", line);
+        hideChar(2200);
+      }
+    }
+  }, [declareLose, showChar, hideChar, showDangerModal]);
 
   // 승리 감지
   useEffect(() => {
@@ -320,7 +391,17 @@ function App() {
     const next = moveStack(s, from, toCol);
     if (next !== s) {
       hasMovedRef.current = true;
-      if (next.foundation.length > s.foundation.length) playStackClear(); else playCardMove();
+      // 진전 판단: foundation 증가 or 뒷면 카드 감소 or 같은 무늬 합치기
+      const foundationProgress = next.foundation.length > s.foundation.length;
+      const faceDownBefore = s.columns.reduce((a, c) => a + c.filter(x => !x.faceUp).length, 0);
+      const faceDownAfter = next.columns.reduce((a, c) => a + c.filter(x => !x.faceUp).length, 0);
+      const faceDownProgress = faceDownAfter < faceDownBefore;
+      if (foundationProgress || faceDownProgress) {
+        noProgressRef.current = 0;  // 진전 있으면 리셋
+      } else {
+        noProgressRef.current += 1;
+      }
+      if (foundationProgress) playStackClear(); else playCardMove();
       checkAfterMove(next);
     }
     return next;
@@ -389,14 +470,14 @@ function App() {
     if (hasMovedRef.current && state.status === "playing" && !showLose) {
       setRecord(prev => { const n = { ...prev, plays: prev.plays+1, currentStreak: 0 }; saveRecord(n); return n; });
     }
-    hasMovedRef.current = false; recentSigsRef.current = [];
+    hasMovedRef.current = false; recentSigsRef.current = []; noProgressRef.current = 0;
     autoRunningRef.current = false; setAutoRunning(false); setAnimCardIds(new Set());
     setCharVisible(false); setCharBubbleVisible(false);
     setDifficulty(diff); setState(newGame(diff));
     setPick(null); pickRef.current = null;
     pointerDownRef.current = null; isDraggingRef.current = false;
     setGhostPos(null); setGhostCards([]);
-    setShowWin(false); setShowLose(false); setIsBestStreak(false);
+    setShowWin(false); setShowLose(false); setShowDangerModal(false); setDangerInfo(null); setIsBestStreak(false);
     setShowDiffModal(false);
   };
 
@@ -411,7 +492,8 @@ function App() {
     if (autoRunning) return;
     if (loseTimerRef.current) { clearTimeout(loseTimerRef.current); loseTimerRef.current = null; }
     setState(s => undo(s)); setPick(null); pickRef.current = null;
-    setShowLose(false);
+    setShowLose(false); setShowDangerModal(false); setDangerInfo(null);
+    noProgressRef.current = 0;
   };
   const resetRecord = () => {
     const e: Record_ = { plays: 0, wins: 0, currentStreak: 0, bestStreak: 0 };
@@ -462,6 +544,38 @@ function App() {
                 <button className="btn" onClick={() => { setShowLose(false); onUndo(); }}>
                   되돌리기 ({3 - state.undoUsed}회 남음)
                 </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 위험 경고 모달 */}
+      {showDangerModal && dangerInfo && (
+        <div className="modal-overlay">
+          <div className="modal danger-modal">
+            <div className="danger-icon">{dangerInfo.level === 'danger' ? '⚠️' : '🚨'}</div>
+            <h2 className="danger-title">위험 신호</h2>
+            <ul className="danger-reasons">
+              {dangerInfo.reasons.map((r, i) => <li key={i}>{r}</li>)}
+            </ul>
+            <p className="danger-desc">계속 진행하겠어?</p>
+            <div className="lose-buttons">
+              <button className="btn btn-primary" onClick={() => {
+                setShowDangerModal(false);
+                setDangerInfo(null);
+              }}>계속하기</button>
+              <button className="btn" onClick={() => {
+                setShowDangerModal(false);
+                setDangerInfo(null);
+                setShowDiffModal(true);
+              }}>새 게임</button>
+              {canUndoAction && (
+                <button className="btn" onClick={() => {
+                  setShowDangerModal(false);
+                  setDangerInfo(null);
+                  onUndo();
+                }}>되돌리기 ({3 - state.undoUsed}회 남음)</button>
               )}
             </div>
           </div>
@@ -541,8 +655,23 @@ function App() {
                   if (col.length <= 1) return 8;
                   const cardH = colHeight * 0.55;
                   const avail = colHeight - cardH - 16;
-                  const step = avail / (col.length - 1);
-                  return 8 + Math.max(14, Math.min(step, 30)) * cardIdx;
+                  const naturalStep = avail / (col.length - 1);
+
+                  // 뒷면 카드: 작게 접기 (8px)
+                  // 앞면 카드: 숫자가 보일 만큼 (최소 20px)
+                  // 단, 전체 avail을 넘지 않도록 동적 조정
+                  const faceDownCount = col.slice(0, cardIdx).filter(c => !c.faceUp).length;
+                  const faceUpCount = col.slice(0, cardIdx).filter(c => c.faceUp).length;
+
+                  const downStep = Math.min(8, naturalStep);
+                  const totalDown = col.filter(c => !c.faceUp).length;
+                  const totalUp = col.filter(c => c.faceUp).length;
+                  const remainAvail = avail - downStep * totalDown;
+                  const upStep = totalUp > 0
+                    ? Math.max(20, Math.min(remainAvail / Math.max(totalUp, 1), 30))
+                    : 20;
+
+                  return 8 + downStep * faceDownCount + upStep * faceUpCount;
                 })();
                 return (
                   <div
