@@ -4,7 +4,7 @@ import "./App.css";
 import {
   canPickStack, dealFromStock, moveStack, newGame, rankLabel, suitLabel, undo,
 } from "./game/game";
-import { buildAutoCompleteSequence, getStateSignature, isAutoCompleteReady, analyzeDanger } from "./game/autoComplete";
+import { buildAutoCompleteSequence, getStateSignature, isAutoCompleteReady, isDeadlock, analyzeDanger } from "./game/autoComplete";
 import type { DangerLevel } from "./game/autoComplete";
 import type { GameState, Card, Difficulty } from "./game/types";
 
@@ -586,14 +586,12 @@ function App() {
       )}
 
       {/* 캐릭터 이펙트 — 화면 가운데 */}
-      {charVisible && (
-        <div className="char-overlay">
-          <div className="char-container">
-            <img src={charImg} alt="char" className="char-img" />
-            <div className={`char-bubble ${charBubbleVisible ? "bubble-visible" : ""}`}>{charLine}</div>
-          </div>
+      <div className={`char-overlay ${charVisible ? "char-visible" : ""}`}>
+        <div className="char-container">
+          <img src={charImg} alt="char" className="char-img" />
+          <div className={`char-bubble ${charBubbleVisible ? "bubble-visible" : ""}`}>{charLine}</div>
         </div>
-      )}
+      </div>
 
       <header className="topbar">
         <div className="topbar-left">
