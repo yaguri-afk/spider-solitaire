@@ -161,6 +161,7 @@ function App() {
   const [showLose, setShowLose] = useState(false);
   const [dangerInfo, setDangerInfo] = useState<{ level: DangerLevel; reasons: string[] } | null>(null);
   const [showDangerModal, setShowDangerModal] = useState(false);
+  const showDangerModalRef = useRef(false);  // 클로저 문제 방지용 ref
   const [showRecord, setShowRecord] = useState(false);
   const [record, setRecord] = useState<Record_>(() => loadRecord());
   const [isBestStreak, setIsBestStreak] = useState(false);
@@ -308,6 +309,7 @@ function App() {
   const declareLose = useCallback(() => {
     if (autoRunningRef.current) return;
     if (stateRef.current.status !== "playing") return;
+    if (stateRef.current.stock.length > 0) return;  // 스톡 남아있으면 패배 아님
     setShowLose(true);
     playLoseSound();
     showChar("/lost.webp", LOSE_LINES[Math.floor(Math.random() * LOSE_LINES.length)]);
@@ -346,12 +348,13 @@ function App() {
     }
 
     // 위험 경고 (스톡 없을 때만, 이미 경고 중이면 스킵)
-    if (!showDangerModal && hasMovedRef.current && nextState.stock.length === 0) {
+    if (!showDangerModalRef.current && hasMovedRef.current && nextState.stock.length === 0) {
       if (danger.level === 'danger') {
         const line = DANGER_LINES[Math.floor(Math.random() * DANGER_LINES.length)];
         setDangerInfo({ level: danger.level, reasons: danger.reasons });
         showChar("/megumi.jpeg", line);
         hideChar(2000);
+        showDangerModalRef.current = true;
         loseTimerRef.current = setTimeout(() => setShowDangerModal(true), 800);
       } else if (danger.level === 'warning') {
         const line = WARNING_LINES[Math.floor(Math.random() * WARNING_LINES.length)];
@@ -359,7 +362,7 @@ function App() {
         hideChar(2200);
       }
     }
-  }, [declareLose, showChar, hideChar, showDangerModal]);
+  }, [declareLose, showChar, hideChar]);
 
   // 승리 감지
   useEffect(() => {
@@ -477,7 +480,7 @@ function App() {
     setPick(null); pickRef.current = null;
     pointerDownRef.current = null; isDraggingRef.current = false;
     setGhostPos(null); setGhostCards([]);
-    setShowWin(false); setShowLose(false); setShowDangerModal(false); setDangerInfo(null); setIsBestStreak(false);
+    setShowWin(false); setShowLose(false); setShowDangerModal(false); showDangerModalRef.current = false; setDangerInfo(null); setIsBestStreak(false);
     setShowDiffModal(false);
   };
 
@@ -562,11 +565,11 @@ function App() {
             <p className="danger-desc">계속 진행하겠어?</p>
             <div className="lose-buttons">
               <button className="btn btn-primary" onClick={() => {
-                setShowDangerModal(false);
+                setShowDangerModal(false); showDangerModalRef.current = false;
                 setDangerInfo(null);
               }}>계속하기</button>
               <button className="btn" onClick={() => {
-                setShowDangerModal(false);
+                setShowDangerModal(false); showDangerModalRef.current = false;
                 setDangerInfo(null);
                 setShowDiffModal(true);
               }}>새 게임</button>
