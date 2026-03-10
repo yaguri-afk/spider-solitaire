@@ -1,128 +1,3 @@
-
-/* ── 위험 경고 모달 ── */
-.danger-modal {
-  border: 2px solid rgba(251, 191, 36, 0.6);
-  background: linear-gradient(135deg, rgba(20, 10, 0, 0.97), rgba(40, 20, 0, 0.97));
-}
-.danger-icon {
-  font-size: 3rem;
-  text-align: center;
-  margin-bottom: 8px;
-  animation: dangerPulse 1s ease-in-out infinite;
-}
-@keyframes dangerPulse {
-  0%, 100% { transform: scale(1); }
-  50%       { transform: scale(1.15); }
-}
-.danger-title {
-  text-align: center;
-  color: #fbbf24;
-  font-size: 1.4rem;
-  margin-bottom: 12px;
-}
-.danger-reasons {
-  list-style: none;
-  padding: 0;
-  margin: 0 0 12px;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-.danger-reasons li {
-  background: rgba(251, 191, 36, 0.12);
-  border-left: 3px solid #fbbf24;
-  padding: 6px 12px;
-  border-radius: 6px;
-  font-size: 13px;
-  color: #fde68a;
-}
-.danger-desc {
-  text-align: center;
-  color: rgba(255,255,255,0.7);
-  font-size: 14px;
-  margin-bottom: 16px;
-}
-
-
-/* ── 캐릭터 이펙트 (화면 가운데) ── */
-.char-overlay {
-  position: fixed;
-  inset: 0;
-  z-index: 12000;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  pointer-events: none;
-  animation: charFadeIn 0.4s ease;
-}
-
-@keyframes charFadeIn {
-  from { opacity: 0; transform: scale(0.8); }
-  to   { opacity: 1; transform: scale(1); }
-}
-
-.char-container {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-}
-
-.char-img {
-  width: 220px;
-  height: 220px;
-  object-fit: cover;
-  object-position: 50% 20%;
-  border-radius: 50%;
-  border: 4px solid rgba(255, 255, 255, 0.5);
-  box-shadow: 0 8px 40px rgba(0,0,0,0.6);
-  animation: charBob 2s ease-in-out infinite;
-}
-
-@keyframes charBob {
-  0%, 100% { transform: translateY(0); }
-  50%       { transform: translateY(-10px); }
-}
-
-.char-bubble {
-  position: absolute;
-  top: -60px;
-  left: 50%;
-  transform: translateX(-50%) scale(0.5);
-  background: white;
-  color: #1a1a1a;
-  border-radius: 18px;
-  padding: 10px 18px;
-  font-size: 15px;
-  font-weight: 700;
-  white-space: nowrap;
-  box-shadow: 0 4px 20px rgba(0,0,0,0.3);
-  opacity: 0;
-  transform-origin: bottom center;
-  transition: opacity 0.3s ease, transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
-}
-
-.char-bubble.bubble-visible {
-  opacity: 1;
-  transform: translateX(-50%) scale(1);
-}
-
-.char-bubble::after {
-  content: "";
-  position: absolute;
-  bottom: -8px;
-  left: 50%;
-  transform: translateX(-50%);
-  border-left: 8px solid transparent;
-  border-right: 8px solid transparent;
-  border-top: 8px solid white;
-}
-
-@media (max-width: 600px) {
-  .char-img { width: 150px; height: 150px; }
-  .char-bubble { font-size: 13px; }
-}
-
 /* ── 폰트 ── */
 @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;900&display=swap');
 
@@ -134,26 +9,21 @@
 body {
   margin: 0;
   background-color: #0e3b2a;
-  height: 100vh;
-  max-height: 100vh;
-  overflow: hidden;
+  min-height: 100vh;
   color: white;
   font-family: 'Outfit', Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
 }
 
 /* ── 전체 레이아웃 ── */
 .game {
-  height: 100vh;
-  max-height: 100vh;
-  overflow: hidden;
+  min-height: 100vh;
   padding: 12px 14px 20px;
-  box-sizing: border-box;
   display: flex;
   flex-direction: column;
   gap: 10px;
   position: relative;
-  --col-h: 580px;
   /* 배경 이미지를 .game에 직접 적용 */
   background-color: #0e3b2a;
   background-image:
@@ -323,15 +193,12 @@ body {
   flex-direction: column;
   gap: 8px;
   flex: 1;
-  min-height: 0;        /* flex 자식이 부모를 넘치지 않도록 */
-  overflow: hidden;
 }
 
 /* Foundation + Stock 상단 영역 */
 .foundation-area {
   display: flex;
   gap: 5px;
-  flex-shrink: 0;        /* foundation이 줄어들지 않도록 */
 }
 
 .foundation-slot {
@@ -358,10 +225,6 @@ body {
 .stock-area {
   cursor: pointer;
   user-select: none;
-  height: 36px;          /* 고정 높이 — stock/empty 전환 시 레이아웃 흔들림 방지 */
-  display: flex;
-  align-items: center;
-  flex-shrink: 0;
 }
 
 .stock-stack {
@@ -404,7 +267,6 @@ body {
   grid-template-columns: repeat(10, minmax(0, 1fr));
   gap: 5px;
   flex: 1;
-  min-height: 0;        /* grid가 부모를 밀어내지 않도록 */
   touch-action: pan-x;
 }
 
@@ -413,8 +275,8 @@ body {
   border-radius: 10px;
   background: rgba(0, 0, 0, 0.15);
   border: 1px solid rgba(255, 255, 255, 0.06);
-  /* 고정 높이 — JS ResizeObserver 의존 제거로 판 크기 변동 방지 */
-  height: var(--col-h, 580px);
+  /* 동적 높이: 뷰포트 기반 */
+  height: clamp(380px, 72vh, 780px);
   padding: 8px;
   overflow: hidden;
   transition: outline 0.1s, box-shadow 0.1s;
@@ -439,12 +301,6 @@ body {
   opacity: 0.2;
   pointer-events: none;
 }
-
-
-@media (max-height: 700px) { .game { --col-h: calc(100vh - 160px); } }
-@media (min-height: 700px) and (max-height: 850px) { .game { --col-h: calc(100vh - 170px); } }
-@media (min-height: 850px) and (max-height: 1000px) { .game { --col-h: calc(100vh - 180px); } }
-@media (min-height: 1000px) { .game { --col-h: calc(100vh - 190px); } }
 
 /* ── 카드 공통 ── */
 .card {
@@ -603,6 +459,85 @@ body {
 .win-btn {
   font-size: 16px;
   padding: 12px 32px;
+}
+
+
+
+/* ── 토토로 자동완성 이펙트 ── */
+.totoro-overlay {
+  position: fixed;
+  bottom: -300px;
+  right: 40px;
+  z-index: 15000;
+  pointer-events: none;
+  transition: bottom 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.totoro-overlay.visible {
+  bottom: 20px;
+}
+
+.totoro-container {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.totoro-img {
+  width: 160px;
+  height: 160px;
+  object-fit: cover;
+  object-position: 50% 20%; /* 메구미 얼굴/상반신 중심 */
+  border-radius: 50%;
+  border: 3px solid rgba(255, 255, 255, 0.4);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+  animation: totoroBob 2s ease-in-out infinite;
+}
+
+@keyframes totoroBob {
+  0%, 100% { transform: translateY(0); }
+  50%       { transform: translateY(-8px); }
+}
+
+.totoro-bubble {
+  position: absolute;
+  bottom: 150px;
+  right: 150px;
+  background: white;
+  color: #333;
+  border-radius: 18px 18px 4px 18px;
+  padding: 10px 16px;
+  font-size: 14px;
+  font-weight: 600;
+  white-space: nowrap;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.3);
+  opacity: 0;
+  transform: scale(0.5) translateY(10px);
+  transform-origin: bottom right;
+  transition: opacity 0.3s ease 0.4s, transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) 0.4s;
+}
+
+.totoro-bubble.bubble-visible {
+  opacity: 1;
+  transform: scale(1) translateY(0);
+}
+
+.totoro-bubble::after {
+  content: "";
+  position: absolute;
+  bottom: -8px;
+  right: 16px;
+  width: 0; height: 0;
+  border-left: 8px solid transparent;
+  border-right: 0px solid transparent;
+  border-top: 8px solid white;
+}
+
+@media (max-width: 600px) {
+  .totoro-img { width: 110px; height: 110px; }
+  .totoro-bubble { font-size: 12px; right: 110px; bottom: 105px; }
+  .totoro-overlay { right: 10px; }
 }
 
 
