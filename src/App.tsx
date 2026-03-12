@@ -157,7 +157,6 @@ function App() {
   const [difficulty, setDifficulty] = useState<Difficulty>(2);
   const [state, setState] = useState<GameState>(() => newGame(2));
   const currentSeedRef = useRef<number>(0);
-  const [charLeft, setCharLeft] = useState<number | null>(null);
   const [showDiffModal, setShowDiffModal] = useState(false);
   const [showWin, setShowWin] = useState(false);
   const [showLose, setShowLose] = useState(false);
@@ -197,7 +196,7 @@ function App() {
   const stateRef = useRef(state);
   stateRef.current = state;
 
-  // 열 크기 + 메구미 위치
+  // 열 크기: resize 때만 업데이트 (초기값은 useState에서 계산)
   useEffect(() => {
     const measure = () => {
       const el = colRefs.current.find(Boolean);
@@ -205,11 +204,7 @@ function App() {
       const r = el.getBoundingClientRect();
       setColHeight(r.height);
       setColWidth(Math.max(r.width - 16, 40));
-      const cols = colRefs.current.filter(Boolean);
-      const lastCol = cols[cols.length - 1];
-      if (lastCol) setCharLeft(lastCol.getBoundingClientRect().right + 12);
     };
-    measure();
     window.addEventListener("resize", measure);
     return () => { window.removeEventListener("resize", measure); };
   }, []);
@@ -316,11 +311,14 @@ function App() {
     if (loseTimerRef.current) { clearTimeout(loseTimerRef.current); loseTimerRef.current = null; }
     // alreadyCounted=true: 승리/패배 모달 경유 (이미 기록됨) → 추가 카운트 안 함
     // alreadyCounted=false: 플레이 중 누른 경우 → 뭔가 진행했으면 패배 카운트
-    if (!alreadyCounted && hasMovedRef.current) {
-      setRecord(prev => {
-        const next = { ...prev, plays: prev.plays + 1, currentStreak: 0 };
-        saveRecord(next); return next;
-      });
+    if (!alreadyCounted) {
+      const didAnything = hasMovedRef.current || stateRef.current.stock.length < 50;
+      if (didAnything) {
+        setRecord(prev => {
+          const next = { ...prev, plays: prev.plays + 1, currentStreak: 0 };
+          saveRecord(next); return next;
+        });
+      }
     }
     const seed = currentSeedRef.current;
     const nextState = newGameWithSeed(difficulty, seed);
@@ -616,7 +614,7 @@ function App() {
       )}
 
       {/* 캐릭터 이펙트 — 화면 가운데 */}
-      <div className={`char-overlay ${charVisible ? "char-visible" : ""}`} style={charLeft !== null ? { left: charLeft, right: "auto" } : {}}>
+      <div className={`char-overlay ${charVisible ? "char-visible" : ""}`}>
         <div className="char-container">
           <img src={charImg} alt="char" className="char-img" />
           <div className={`char-bubble ${charBubbleVisible ? "bubble-visible" : ""}`}>{charLine}</div>
@@ -635,7 +633,7 @@ function App() {
         </div>
         <div className="buttons">
           <button className="btn btn-primary" onClick={() => setShowDiffModal(true)}>새 게임</button>
-          <button className="btn" onClick={retrySameBoard}>이 판 처음부터</button>
+          <button className="btn" onClick={() => retrySameBoard()}>이 판 처음부터</button>
           <button className="btn" onClick={onDeal} disabled={!canDeal}>
             카드 뽑기{state.stock.length > 0 && <span className="btn-badge">{Math.floor(state.stock.length/10)}</span>}
           </button>
