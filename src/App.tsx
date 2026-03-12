@@ -157,6 +157,7 @@ function App() {
   const [difficulty, setDifficulty] = useState<Difficulty>(2);
   const [state, setState] = useState<GameState>(() => newGame(2));
   const currentSeedRef = useRef<number>(0);
+  const [charLeft, setCharLeft] = useState<number | null>(null);
   const [showDiffModal, setShowDiffModal] = useState(false);
   const [showWin, setShowWin] = useState(false);
   const [showLose, setShowLose] = useState(false);
@@ -196,7 +197,7 @@ function App() {
   const stateRef = useRef(state);
   stateRef.current = state;
 
-  // 열 크기: resize 때만 업데이트 (초기값은 useState에서 계산)
+  // 열 크기 + 메구미 위치
   useEffect(() => {
     const measure = () => {
       const el = colRefs.current.find(Boolean);
@@ -204,7 +205,11 @@ function App() {
       const r = el.getBoundingClientRect();
       setColHeight(r.height);
       setColWidth(Math.max(r.width - 16, 40));
+      const cols = colRefs.current.filter(Boolean);
+      const lastCol = cols[cols.length - 1];
+      if (lastCol) setCharLeft(lastCol.getBoundingClientRect().right + 12);
     };
+    measure();
     window.addEventListener("resize", measure);
     return () => { window.removeEventListener("resize", measure); };
   }, []);
@@ -614,7 +619,7 @@ function App() {
       )}
 
       {/* 캐릭터 이펙트 — 화면 가운데 */}
-      <div className={`char-overlay ${charVisible ? "char-visible" : ""}`}>
+      <div className={`char-overlay ${charVisible ? "char-visible" : ""}`} style={charLeft !== null ? { left: charLeft, right: "auto" } : {}}>
         <div className="char-container">
           <img src={charImg} alt="char" className="char-img" />
           <div className={`char-bubble ${charBubbleVisible ? "bubble-visible" : ""}`}>{charLine}</div>
