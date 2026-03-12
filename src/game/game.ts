@@ -4,10 +4,21 @@ function uid() {
   return `${Date.now()}-${Math.random().toString(16).slice(2)}`
 }
 
-function shuffle<T>(arr: T[]): T[] {
+function seededRandom(seed: number): () => number {
+  let s = seed
+  return () => {
+    s |= 0; s = s + 0x6D2B79F5 | 0
+    let t = Math.imul(s ^ s >>> 15, 1 | s)
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t
+    return ((t ^ t >>> 14) >>> 0) / 4294967296
+  }
+}
+
+function shuffle<T>(arr: T[], rng?: () => number): T[] {
   const a = [...arr]
+  const rand = rng ?? Math.random
   for (let i = a.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1))
+    const j = Math.floor(rand() * (i + 1))
     ;[a[i], a[j]] = [a[j], a[i]]
   }
   return a
@@ -19,7 +30,7 @@ function suitsForDifficulty(d: Difficulty): Suit[] {
   return ['S', 'H', 'D', 'C']
 }
 
-export function makeDeck(difficulty: Difficulty): Card[] {
+export function makeDeck(difficulty: Difficulty, rng?: () => number): Card[] {
   const suits = suitsForDifficulty(difficulty)
   const deck: Card[] = []
 
@@ -38,7 +49,7 @@ export function makeDeck(difficulty: Difficulty): Card[] {
     }
   }
 
-  return shuffle(deck)
+  return shuffle(deck, rng)
 }
 
 function deepCloneSnapshot(s: GameSnapshot): GameSnapshot {
@@ -81,7 +92,13 @@ function dealInitial(deck: Card[]): { columns: Card[][]; stock: Card[] } {
 }
 
 export function newGame(difficulty: Difficulty = 2): GameState {
-  const deck = makeDeck(difficulty)
+  const seed = Math.floor(Math.random() * 2147483647)
+  return newGameWithSeed(difficulty, seed)
+}
+
+export function newGameWithSeed(difficulty: Difficulty, seed: number): GameState {
+  const rng = seededRandom(seed)
+  const deck = makeDeck(difficulty, rng)
   const { columns, stock } = dealInitial(deck)
 
   const snapshot: GameSnapshot = {
@@ -96,6 +113,7 @@ export function newGame(difficulty: Difficulty = 2): GameState {
   return {
     ...snapshot,
     history: [],
+    seed,
   }
 }
 

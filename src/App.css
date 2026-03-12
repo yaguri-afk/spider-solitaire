@@ -9,20 +9,24 @@
 body {
   margin: 0;
   background-color: #0e3b2a;
-  min-height: 100vh;
+  height: 100vh;
+  max-height: 100vh;
+  overflow: hidden;
   color: white;
   font-family: 'Outfit', Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
-  overflow-x: hidden;
 }
 
 /* ── 전체 레이아웃 ── */
 .game {
-  min-height: 100vh;
-  padding: 12px 14px 20px;
+  height: 100vh;
+  max-height: 100vh;
+  overflow: hidden;
+  box-sizing: border-box;
+  padding: 12px 14px 16px;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
   position: relative;
   /* 배경 이미지를 .game에 직접 적용 */
   background-color: #0e3b2a;
@@ -276,7 +280,7 @@ body {
   background: rgba(0, 0, 0, 0.15);
   border: 1px solid rgba(255, 255, 255, 0.06);
   /* 동적 높이: 뷰포트 기반 */
-  height: clamp(380px, 72vh, 780px);
+  height: clamp(360px, calc(100vh - 160px), 820px);
   padding: 8px;
   overflow: hidden;
   transition: outline 0.1s, box-shadow 0.1s;
@@ -467,14 +471,14 @@ body {
 .char-overlay {
   position: fixed;
   bottom: -300px;
-  right: 40px;
+  right: 14px;   /* 보드 우측 끝에 인접 */
   z-index: 15000;
   pointer-events: none;
   transition: bottom 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 .char-overlay.char-visible {
-  bottom: 20px;
+  bottom: 16px;
 }
 
 .char-container {
@@ -502,8 +506,8 @@ body {
 
 .char-bubble {
   position: absolute;
-  bottom: 150px;
-  right: 150px;
+  bottom: 160px;
+  right: 10px;    /* 이미지 바로 위쪽에서 왼쪽으로 펼쳐짐 */
   background: white;
   color: #333;
   border-radius: 18px 18px 4px 18px;
@@ -817,142 +821,92 @@ body {
 /* ══════════════════════════════
    반응형 — 태블릿 (아이패드)
 ══════════════════════════════ */
-@media (max-width: 900px) {
+/* ══════════════════════════════
+   PC 대형 (1440px+, 4K 등)
+══════════════════════════════ */
+@media (min-width: 1440px) {
   .game {
-    padding: 10px;
-    gap: 8px;
+    padding: 16px 20px 16px;
+    gap: 10px;
   }
-
-  .topbar {
-    padding: 8px 12px;
-    border-radius: 12px;
-  }
-
-  .topbar-left h1 {
-    font-size: 18px;
-  }
-
-  .stat {
-    padding: 3px 8px;
-    min-width: 44px;
-  }
-
-  .stat-value {
-    font-size: 14px;
-  }
-
-  .btn {
-    padding: 7px 10px;
-    font-size: 12px;
-  }
-
-  .board {
-    gap: 4px;
-  }
-
-  .column {
-    height: clamp(320px, 68vh, 650px);
-    border-radius: 8px;
-    padding: 6px;
-  }
+  .topbar-left h1 { font-size: 26px; }
+  .column { height: clamp(480px, calc(100vh - 155px), 920px); }
+  .btn { padding: 9px 16px; font-size: 14px; }
+  .char-img { width: 180px; height: 180px; }
+  .char-bubble { font-size: 15px; right: 170px; bottom: 170px; }
 }
 
 /* ══════════════════════════════
-   반응형 — 모바일 (아이폰)
+   PC 표준 (1024px ~ 1439px)
+══════════════════════════════ */
+@media (min-width: 1024px) and (max-width: 1439px) {
+  .game { padding: 12px 16px 14px; gap: 9px; }
+  .column { height: clamp(400px, calc(100vh - 150px), 780px); }
+}
+
+/* ══════════════════════════════
+   iPad 12.9" 가로 (1366×1024)
+   — min-width 1024 이상이므로 위와 겹침, orientation으로 구분
+══════════════════════════════ */
+@media (min-width: 1024px) and (max-height: 1100px) and (orientation: landscape) {
+  .game { padding: 10px 14px 12px; gap: 8px; }
+  .topbar { padding: 8px 14px; }
+  .topbar-left h1 { font-size: 20px; }
+  .btn { padding: 7px 12px; font-size: 12px; }
+  .column { height: clamp(380px, calc(100vh - 145px), 750px); }
+  .char-img { width: 150px; height: 150px; }
+  .char-bubble { font-size: 13px; right: 145px; bottom: 145px; }
+}
+
+/* ══════════════════════════════
+   태블릿 세로 / 중간 화면 (768px ~ 1023px)
+══════════════════════════════ */
+@media (max-width: 1023px) and (min-width: 601px) {
+  .game { padding: 10px; gap: 8px; }
+  .topbar { padding: 8px 12px; border-radius: 12px; }
+  .topbar-left h1 { font-size: 18px; }
+  .stat { padding: 3px 8px; min-width: 44px; }
+  .stat-value { font-size: 14px; }
+  .btn { padding: 7px 10px; font-size: 12px; }
+  .board { gap: 4px; }
+  .column { height: clamp(300px, calc(100vh - 155px), 640px); border-radius: 8px; padding: 6px; }
+  .char-img { width: 130px; height: 130px; }
+  .char-bubble { font-size: 12px; right: 125px; bottom: 125px; }
+}
+
+/* ══════════════════════════════
+   모바일 (600px 이하)
 ══════════════════════════════ */
 @media (max-width: 600px) {
-  .game {
-    padding: 8px 6px 16px;
-    gap: 6px;
-  }
-
-  .topbar {
-    flex-wrap: nowrap;
-    padding: 7px 10px;
-    gap: 8px;
-    border-radius: 10px;
-  }
-
-  .topbar-left h1 {
-    font-size: 16px;
-  }
-
-  .diff-badge {
-    display: none; /* 공간 부족 시 숨김 */
-  }
-
-  .topbar-stats {
-    gap: 4px;
-  }
-
-  .stat {
-    padding: 2px 6px;
-    min-width: 38px;
-  }
-
-  .stat-label {
-    font-size: 9px;
-  }
-
-  .stat-value {
-    font-size: 13px;
-  }
-
-  .buttons {
-    gap: 5px;
-  }
-
-  .btn {
-    padding: 6px 8px;
-    font-size: 11px;
-    border-radius: 8px;
-  }
-
-  .btn-badge {
-    display: none; /* 모바일 공간 절약 */
-  }
-
-  .board {
-    gap: 3px;
-  }
-
-  .column {
-    height: clamp(280px, 65vw, 450px);
-    border-radius: 7px;
-    padding: 4px;
-  }
-
-  .card {
-    border-radius: 7px;
-  }
-
-  .foundation-area {
-    gap: 3px;
-  }
-
-  /* 승리 배너 */
-  .win-banner {
-    flex-direction: column;
-    text-align: center;
-    gap: 8px;
-    padding: 12px;
-    font-size: 14px;
-  }
+  .game { padding: 8px 6px 16px; gap: 6px; }
+  .topbar { flex-wrap: nowrap; padding: 7px 10px; gap: 8px; border-radius: 10px; }
+  .topbar-left h1 { font-size: 16px; }
+  .diff-badge { display: none; }
+  .topbar-stats { gap: 4px; }
+  .stat { padding: 2px 6px; min-width: 38px; }
+  .stat-label { font-size: 9px; }
+  .stat-value { font-size: 13px; }
+  .buttons { gap: 5px; }
+  .btn { padding: 6px 8px; font-size: 11px; border-radius: 8px; }
+  .btn-badge { display: none; }
+  .board { gap: 3px; }
+  .column { height: clamp(260px, 60vw, 420px); border-radius: 7px; padding: 4px; }
+  .card { border-radius: 7px; }
+  .foundation-area { gap: 3px; }
+  .win-banner { flex-direction: column; text-align: center; gap: 8px; padding: 12px; font-size: 14px; }
+  .char-img { width: 100px; height: 100px; }
+  .char-bubble { font-size: 11px; right: 95px; bottom: 95px; }
+  .char-overlay { right: 8px; }
 }
 
 /* ══════════════════════════════
-   가로 모드 (아이폰 landscape)
+   모바일 가로 (아이폰 landscape)
 ══════════════════════════════ */
-@media (max-width: 900px) and (orientation: landscape) {
-  .column {
-    height: clamp(220px, 55vh, 400px);
-  }
-
-  .topbar {
-    padding: 6px 10px;
-  }
-
-  .topbar-left h1 {
-    font-size: 15px;
-  }
+@media (max-width: 900px) and (orientation: landscape) and (max-height: 500px) {
+  .game { padding: 6px 10px; gap: 5px; }
+  .column { height: clamp(180px, calc(100vh - 110px), 340px); }
+  .topbar { padding: 5px 10px; }
+  .topbar-left h1 { font-size: 14px; }
+  .char-img { width: 80px; height: 80px; }
+  .char-bubble { font-size: 10px; right: 78px; bottom: 78px; }
 }

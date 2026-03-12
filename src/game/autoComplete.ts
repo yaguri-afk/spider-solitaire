@@ -58,6 +58,9 @@ export type DangerInfo = {
 export function analyzeDanger(state: GameState, noProgressCount: number = 0): DangerInfo {
   if (state.status !== 'playing') return { level: 'safe', score: 0, reasons: [] }
 
+  // 승리 임박 (foundation 4개 이상) — 경고 억제
+  if (state.foundation.length >= 4) return { level: 'safe', score: 0, reasons: [] }
+
   // 패배 확정
   if (isDeadlock(state)) {
     return { level: 'deadlock', score: 100, reasons: ['더 이상 유효한 이동이 없어'] }

@@ -21,4 +21,5 @@ export type GameSnapshot = {
 
 export type GameState = GameSnapshot & {
   history: GameSnapshot[]
+  seed?: number
 }
