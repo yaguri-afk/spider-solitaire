@@ -478,7 +478,7 @@ body {
 }
 
 .char-overlay.char-visible {
-  bottom: 16px;
+  bottom: calc(50vh - 120px);  /* 카드 배열 높이 근처 */
 }
 
 .char-container {
