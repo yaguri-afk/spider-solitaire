@@ -789,12 +789,6 @@ function App() {
           <button className="btn btn-primary" onClick={() => setShowDiffModal(true)}>새 게임</button>
           <button className="btn" onClick={() => retrySameBoard()}>이 판 처음부터</button>
           <button className="btn btn-megumi" onClick={() => {
-            const imgs = ["/megumi-comic.jpg", "/megumi-cool.jpg", "/megumi-angry.jpg"];
-            const lines = [
-              ...COMIC_LINES,
-              ...COOL_CLICK_LINES.map(l => l),
-              ...ANGRY_CLICK_LINES.map(l => l),
-            ];
             // 70% 확률로 코믹, 15% 잘생긴, 15% 화난
             const r = Math.random();
             const img = r < 0.7 ? "/megumi-comic.jpg" : r < 0.85 ? "/megumi-cool.jpg" : "/megumi-angry.jpg";
