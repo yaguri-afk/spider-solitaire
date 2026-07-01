@@ -75,6 +75,135 @@ async function playLoseSound() {
   } catch (_) {}
 }
 
+// ── 잘생긴 메구미: 한 세트 완성 시 ──
+const COOL_LINES = [
+  "하나 끝났군. 딱히 칭찬은 안 해.",
+  "...좋아. 계속해.",
+  "한 세트. 아직 일곱 개 남았어.",
+  "나쁘지 않아. 그게 다야.",
+  "흠. 예상보다 빠르네.",
+  "...할 줄 아네.",
+  "한 개. 기억해둘게.",
+  "그래. 그렇게 하는 거야.",
+  "뭐, 이 정도는 기본이지.",
+  "한 세트 완성. 감흥은 없어.",
+  "...계속 이 페이스면 나쁘지 않겠는데.",
+  "됐어. 다음 거 해.",
+  "하나 정리됐군. 나머지도 부탁해.",
+  "...의외로 하는군.",
+  "한 세트. 아직 방심하지 마.",
+  "뭐야. 제대로 하잖아.",
+  "...인정. 딱 거기까지만.",
+  "좋아. 그게 끝이 아니잖아.",
+  "하나 클리어. 포커페이스 유지해.",
+  "...생각보다 못하지는 않네.",
+];
+
+// ── 화난 메구미: 카드 이동 없이 뽑기만 연속 시 ──
+const ANGRY_DEAL_LINES = [
+  "야, 정하진. 뽑기만 하면 게임이 되냐.",
+  "이눔시키, 카드 좀 움직여봐.",
+  "거대대왕모기. 지금 장난하는 거야?",
+  "정하진, 그거 게임 아니야. 그냥 버튼 누르기야.",
+  "...뽑기만 하면 뭐가 해결될 것 같아? 안 돼.",
+  "야 이눔시키, 카드를 써야지 뽑기만 하면 어떡해.",
+  "거대대왕모기. 진지하게 좀 해줄래?",
+  "정하진, 내 눈 똑바로 봐. 지금 뭐 하는 거야.",
+  "...이건 클리커 게임이 아니야. 알아?",
+  "뽑고 또 뽑고. 정하진 너 지금 나 시험해?",
+  "야, 거대대왕모기. 카드 볼 줄은 알아?",
+  "이눔시키. 뽑기 버튼에 미련 있어?",
+  "정하진, 한 번만 더 뽑으면 내가 직접 처리한다.",
+  "...뽑기만 하는 거 나도 할 수 있어. 근데 그게 의미가 있냐고.",
+  "야 이눔시키, 카드 배치 좀 봐봐. 수가 있잖아.",
+  "거대대왕모기. 지금 몇 번째 뽑기야. 세어봤어?",
+  "정하진, 엄마한테 이를 거야.",
+  "...이러다 스톡 다 뽑히면 그때 후회한다.",
+  "야. 뽑기 중독이야? 카드 좀 써.",
+  "정하진. 다음에 또 이러면 자동완성 안 눌러줄 거야.",
+];
+
+// ── 코믹한 메구미: 메구미 버튼 클릭 시 (50개) ──
+const COMIC_LINES = [
+  "...나한테 말 걸지 마. 바쁜 척하는 중이야.",
+  "뭐야. 볼 거 없어?",
+  "...이 게임 사실 나도 잘 못해.",
+  "클리어하면 내가 조금 인정해줄게. 조금.",
+  "...지금 몇 시야. 왜 이걸 하고 있어.",
+  "십종영법 써서 카드 정리해줄까? 안 돼.",
+  "...솔직히 이 게임 운이 70%야.",
+  "뭘 봐. 그냥 해.",
+  "나도 모르게 응원하고 있었어. 비밀이야.",
+  "...이 패 좀 이상한 거 맞지? 내 탓 아니야.",
+  "메구미를 불렀어? 이번 한 번만 나와줬어.",
+  "...사실 스파이더 솔리테어 고수야. 말은 안 했지만.",
+  "영역전개. 무량공처. 그래도 이 패는 못 구해.",
+  "...왜 나를 클릭했어. 딱히 해줄 말 없는데.",
+  "뭐, 재밌긴 해. 지켜보는 게.",
+  "...가끔 이기는 거 보면 솔직히 좀 놀라.",
+  "내가 도와줄 수 있는 건 여기까지야.",
+  "...다음 수 보여? 있어. 잘 봐봐.",
+  "패가 나쁜 게 아니야. 전략이 없는 거지.",
+  "...내가 두면 이미 세 수 앞이야. 참고만 해.",
+  "뭐야, 또 불렀어?",
+  "...오늘 몇 판째야. 괜찮아?",
+  "이기고 싶으면 빈 열부터 만들어.",
+  "...솔직히 이 게임 패배가 더 많아. 나도.",
+  "클릭할 거 없으면 나 클릭하는 거야?",
+  "...그래. 뭐, 여기 있긴 해.",
+  "팔극공 쓰면 카드 다 날아가. 안 써.",
+  "...한 수 잘못 두면 10수가 꼬여. 알고 있지?",
+  "나한테 뭘 기대하는 거야. 그냥 있는 거야.",
+  "...오늘 날씨 어때. 아니 게임이나 해.",
+  "내가 나타났으니까 뭔가 잘 될 거야. 보장은 못 하지만.",
+  "...이 패 처음부터 꼬인 거 맞아. 그래도 해봐.",
+  "뭐, 같이 있어줄게. 잠깐만.",
+  "...이기면 내가 조금 기뻐할게. 티는 안 내지만.",
+  "카드가 많이 쌓였네. 정리 좀 해.",
+  "...나도 가끔 막히는 패가 있어. 드문 일이지만.",
+  "불렀어? 왔어. 이제 뭐해.",
+  "...빈 열이 없으면 다 막혀. 명심해.",
+  "메구미 등장. 특별히 한 번만.",
+  "...사실 옆에서 계속 보고 있었어.",
+  "십종영법 제 다섯, 아 게임이나 해.",
+  "...지금 이 순간이 제일 중요해. 다음 수.",
+  "뭘 그렇게 봐. 나 원래 이래.",
+  "...이 패 풀리면 솔직히 대단한 거야.",
+  "같은 무늬끼리 먼저 모아봐. 기본이야.",
+  "...카드 뒤집는 거 놓치지 마. 중요해.",
+  "왜 불러. 심심해?",
+  "...뭐, 나쁘지 않은 게임이야. 이건.",
+  "오늘도 여기 있어. 딱히 이유는 없어.",
+  "...포기하지 마. 라고 말해줄 수는 있어.",
+];
+
+// ── 잘생긴/화난 메구미 버튼 클릭 시 ──
+const COOL_CLICK_LINES = [
+  "...뭐야. 왜 불러.",
+  "이 표정 마음에 들어? 나도 마음에 들어.",
+  "...그냥 게임이나 해.",
+  "뭘 봐. 클리어나 해봐.",
+  "...칭찬받고 싶으면 이겨.",
+  "이 눈빛이 뭘 말하는지 알지?",
+  "...다음 수 생각해. 지금 볼 거 없어.",
+  "뭐, 잘생겼다는 거 알아.",
+  "...그래서 뭐.",
+  "게임에 집중해.",
+];
+
+const ANGRY_CLICK_LINES = [
+  "왜 불러. 할 말 있어?",
+  "...지금 제대로 하고 있는 거 맞아?",
+  "카드 좀 제대로 봐.",
+  "...이거 장난이야?",
+  "지금 몇 수째 같은 실수야.",
+  "...정신 차려.",
+  "뭐가 문제야. 말해봐.",
+  "...한심하게 보지 않으려고 노력 중이야.",
+  "제대로 해. 딱 한 번만 말할게.",
+  "...실망이야.",
+];
+
 const AUTO_LINES = [
   // 후루베 유라유라 시리즈
   "후루베 유라유라… 별수 없으니 내가 마무리해준다.",
@@ -183,6 +312,7 @@ function App() {
   const loseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const recentSigsRef = useRef<string[]>([]);
   const noProgressRef = useRef<number>(0);  // 진전 없는 이동 횟수
+  const consecutiveDealRef = useRef<number>(0);  // 이동 없이 연속 뽑기 횟수
 
   const [pick, setPick] = useState<{ fromCol: number; fromIndex: number } | null>(null);
   const [ghostPos, setGhostPos] = useState<{ x: number; y: number } | null>(null);
@@ -192,7 +322,10 @@ function App() {
   const isDraggingRef = useRef(false);
   const pickRef = useRef<{ fromCol: number; fromIndex: number } | null>(null);
   const colRefs = useRef<(HTMLDivElement | null)[]>([]);
-  const [colHeight, setColHeight] = useState(() => Math.max(window.innerHeight - 180, 380));
+  const [colHeight, setColHeight] = useState(() => {
+    const vh = window.visualViewport?.height ?? window.innerHeight;
+    return Math.max(vh - 180, 380);
+  });
   const [colWidth, setColWidth] = useState(60);
   const stateRef = useRef(state);
   stateRef.current = state;
@@ -211,7 +344,12 @@ function App() {
     };
     measure();
     window.addEventListener("resize", measure);
-    return () => { window.removeEventListener("resize", measure); };
+    // 아이패드 Safari: visualViewport로 툴바 토글 감지
+    window.visualViewport?.addEventListener("resize", measure);
+    return () => {
+      window.removeEventListener("resize", measure);
+      window.visualViewport?.removeEventListener("resize", measure);
+    };
   }, []);
 
   // 캐릭터 등장
@@ -316,21 +454,18 @@ function App() {
     if (loseTimerRef.current) { clearTimeout(loseTimerRef.current); loseTimerRef.current = null; }
     // alreadyCounted=true: 승리/패배 모달 경유 (이미 기록됨) → 추가 카운트 안 함
     // alreadyCounted=false: 플레이 중 누른 경우 → 뭔가 진행했으면 패배 카운트
-    if (!alreadyCounted) {
-      const didAnything = hasMovedRef.current || stateRef.current.stock.length < 50;
-      if (didAnything) {
-        setRecord(prev => {
-          const next = { ...prev, plays: prev.plays + 1, currentStreak: 0 };
-          saveRecord(next); return next;
-        });
-      }
+    if (!alreadyCounted && hasMovedRef.current) {
+      setRecord(prev => {
+        const next = { ...prev, plays: prev.plays + 1, currentStreak: 0 };
+        saveRecord(next); return next;
+      });
     }
     const seed = currentSeedRef.current;
     const nextState = newGameWithSeed(difficulty, seed);
     setState(nextState);
     setShowWin(false); setShowLose(false); setShowDangerModal(false);
     showDangerModalRef.current = false; setDangerInfo(null); setIsBestStreak(false);
-    hasMovedRef.current = false; recentSigsRef.current = []; noProgressRef.current = 0;
+    hasMovedRef.current = false; recentSigsRef.current = []; noProgressRef.current = 0; consecutiveDealRef.current = 0;
   }, [difficulty]);
 
   const declareLose = useCallback(() => {
@@ -426,6 +561,7 @@ function App() {
     const next = moveStack(s, from, toCol);
     if (next !== s) {
       hasMovedRef.current = true;
+      consecutiveDealRef.current = 0;  // 카드 이동 시 연속뽑기 카운터 리셋
       // 진전 판단: foundation 증가 or 뒷면 카드 감소 or 같은 무늬 합치기
       const foundationProgress = next.foundation.length > s.foundation.length;
       const faceDownBefore = s.columns.reduce((a, c) => a + c.filter(x => !x.faceUp).length, 0);
@@ -435,6 +571,12 @@ function App() {
         noProgressRef.current = 0;  // 진전 있으면 리셋
       } else {
         noProgressRef.current += 1;
+      }
+      // 한 세트 완성 시 잘생긴 메구미 등장
+      if (foundationProgress && next.status !== 'won') {
+        const line = COOL_LINES[Math.floor(Math.random() * COOL_LINES.length)];
+        showChar("/megumi-cool.jpg", line);
+        hideChar(2500);
       }
       if (foundationProgress) playStackClear(); else playCardMove();
       checkAfterMove(next);
@@ -519,6 +661,13 @@ function App() {
   const onDeal = () => {
     if (autoRunning) return;
     if (loseTimerRef.current) { clearTimeout(loseTimerRef.current); loseTimerRef.current = null; }
+    consecutiveDealRef.current += 1;
+    if (consecutiveDealRef.current >= 3) {
+      const line = ANGRY_DEAL_LINES[Math.floor(Math.random() * ANGRY_DEAL_LINES.length)];
+      showChar("/megumi-angry.jpg", line);
+      hideChar(3000);
+      consecutiveDealRef.current = 0;
+    }
     setState(s => { const next = dealFromStock(s); checkAfterMove(next); return next; });
     setPick(null); pickRef.current = null;
   };
@@ -639,6 +788,21 @@ function App() {
         <div className="buttons">
           <button className="btn btn-primary" onClick={() => setShowDiffModal(true)}>새 게임</button>
           <button className="btn" onClick={() => retrySameBoard()}>이 판 처음부터</button>
+          <button className="btn btn-megumi" onClick={() => {
+            const imgs = ["/megumi-comic.jpg", "/megumi-cool.jpg", "/megumi-angry.jpg"];
+            const lines = [
+              ...COMIC_LINES,
+              ...COOL_CLICK_LINES.map(l => l),
+              ...ANGRY_CLICK_LINES.map(l => l),
+            ];
+            // 70% 확률로 코믹, 15% 잘생긴, 15% 화난
+            const r = Math.random();
+            const img = r < 0.7 ? "/megumi-comic.jpg" : r < 0.85 ? "/megumi-cool.jpg" : "/megumi-angry.jpg";
+            const pool = r < 0.7 ? COMIC_LINES : r < 0.85 ? COOL_CLICK_LINES : ANGRY_CLICK_LINES;
+            const line = pool[Math.floor(Math.random() * pool.length)];
+            showChar(img, line);
+            hideChar(3000);
+          }}>메구미</button>
           <button className="btn" onClick={onDeal} disabled={!canDeal}>
             카드 뽑기{state.stock.length > 0 && <span className="btn-badge">{Math.floor(state.stock.length/10)}</span>}
           </button>
